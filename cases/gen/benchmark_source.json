@@ -1,0 +1,10 @@
+{
+  "benchmark": "VideoWeaver",
+  "upstream_commit": "c809392fe6c2c8b22472049684aaefc650e31bde",
+  "category": "blocked",
+  "case_id": null,
+  "task_semantics_modified": false,
+  "agent": "OpenClaw",
+  "status": "blocked",
+  "reason": "VideoWeaver dataset is not yet publicly released. The dataset/README.md states 'still being processed and prepared for release'. GEN case import is blocked until the dataset becomes available."
+}

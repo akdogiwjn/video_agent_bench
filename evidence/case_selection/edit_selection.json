@@ -1,0 +1,24 @@
+{
+  "selected_task": "football",
+  "benchmark": "AgenticVBench",
+  "family": "repurpose",
+  "selection_rules": [
+    "family_repurpose",
+    "longer_source_unknown",
+    "brief_clear",
+    "not_simple_trim",
+    "needs_content_selection",
+    "needs_reorganization",
+    "verifier_available",
+    "materials_obtainable"
+  ],
+  "candidate_count": 25,
+  "complexity_range": {
+    "min": 4,
+    "median": 6,
+    "max": 10
+  },
+  "selected_complexity_score": 7,
+  "reason": "Selected from 25 candidates that pass all EDIT filters. Complexity score 7 is at/above median (6) of range [4, 10].",
+  "status": "selected"
+}

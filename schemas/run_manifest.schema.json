@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "run_manifest",
+  "description": "Provenance chain for a single benchmark run.",
+  "type": "object",
+  "required": ["benchmark", "case_id", "benchmark_commit", "agent", "docker_image", "started_at", "finished_at", "agent_exit_code"],
+  "properties": {
+    "benchmark": { "type": "string" },
+    "case_id": { "type": "string" },
+    "benchmark_commit": { "type": "string" },
+    "agent": { "type": "string" },
+    "agent_version": { "type": "string" },
+    "agent_model": { "type": "string" },
+    "docker_image": { "type": "string" },
+    "docker_image_id": { "type": "string" },
+    "task_sha256": { "type": "string" },
+    "input_sha256": {
+      "type": "object",
+      "description": "Map of input file paths to SHA256 hashes.",
+      "additionalProperties": { "type": "string" }
+    },
+    "skills_sha256": {
+      "type": "object",
+      "description": "Map of skill file paths to SHA256 hashes.",
+      "additionalProperties": { "type": "string" }
+    },
+    "started_at": { "type": "string", "format": "date-time" },
+    "finished_at": { "type": "string", "format": "date-time" },
+    "agent_exit_code": { "type": "integer" }
+  }
+}

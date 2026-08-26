@@ -1,0 +1,1737 @@
+{
+  "benchmark": "AgenticVBench",
+  "family": "repurpose",
+  "tasks_root": "upstream/agentic_vbench/tasks_repurpose",
+  "total_tasks": 36,
+  "tasks": [
+    {
+      "task_id": "boxing",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/boxing/steps/solve/instruction.md",
+      "instruction_length_chars": 2144,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/boxing.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "75s",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "2 (stereo)",
+        "sample_rate": "44100 or 48000"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/boxing",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=boxing)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "comedy-knead",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/comedy-knead/steps/solve/instruction.md",
+      "instruction_length_chars": 2201,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/comedy_knead.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "unknown",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "2 (stereo)",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/comedy-knead",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=comedy_knead)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "conf-tech",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/conf-tech/steps/solve/instruction.md",
+      "instruction_length_chars": 2312,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/conf_tech.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "75s",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "2 (stereo)",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/conf-tech",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=conf_tech)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "einaudi-experience",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/einaudi-experience/steps/solve/instruction.md",
+      "instruction_length_chars": 2484,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/einaudi_experience.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "75s",
+        "resolution": "1080x1920",
+        "container_codec": "unknown",
+        "audio_channels": "2 (stereo)",
+        "sample_rate": "44100 or 48000"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/einaudi-experience",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=einaudi_experience)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "event-apollo-11-50th-anniversary",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/event-apollo-11-50th-anniversary/steps/solve/instruction.md",
+      "instruction_length_chars": 3040,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/event_apollo_11_50th_anniversary.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": "unknown",
+        "duration": "unknown",
+        "resolution": "unknown",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/event-apollo-11-50th-anniversary",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=event_apollo_11_50th_anniversary)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "film-2001-space-odyssey-trailer",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/film-2001-space-odyssey-trailer/steps/solve/instruction.md",
+      "instruction_length_chars": 2649,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/film_2001_space_odyssey_trailer.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": "unknown",
+        "duration": "unknown",
+        "resolution": "unknown",
+        "container_codec": "unknown",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/film-2001-space-odyssey-trailer",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=film_2001_space_odyssey_trailer)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "film-casablanca-warner-4k-trailer",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/film-casablanca-warner-4k-trailer/steps/solve/instruction.md",
+      "instruction_length_chars": 2566,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/film_casablanca_warner_4k_trailer.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": "unknown",
+        "duration": "unknown",
+        "resolution": "unknown",
+        "container_codec": "unknown",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/film-casablanca-warner-4k-trailer",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=film_casablanca_warner_4k_trailer)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "film-in-the-mood-for-love-criterion-trailer",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/film-in-the-mood-for-love-criterion-trailer/steps/solve/instruction.md",
+      "instruction_length_chars": 3453,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/film_in_the_mood_for_love_criterion_trailer.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "unknown",
+        "resolution": "1080x1920",
+        "container_codec": "unknown",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/film-in-the-mood-for-love-criterion-trailer",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=film_in_the_mood_for_love_criterion_trailer)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "film-memento-2000-three-minute-essay",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/film-memento-2000-three-minute-essay/steps/solve/instruction.md",
+      "instruction_length_chars": 2647,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/film_memento_2000_three_minute_essay.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": "unknown",
+        "duration": "unknown",
+        "resolution": "unknown",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/film-memento-2000-three-minute-essay",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=film_memento_2000_three_minute_essay)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "film-mulholland-drive-lynch-essay",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/film-mulholland-drive-lynch-essay/steps/solve/instruction.md",
+      "instruction_length_chars": 2815,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/film_mulholland_drive_lynch_essay.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": "unknown",
+        "duration": "unknown",
+        "resolution": "unknown",
+        "container_codec": "unknown",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/film-mulholland-drive-lynch-essay",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=film_mulholland_drive_lynch_essay)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "film-oldboy-neon-trailer",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/film-oldboy-neon-trailer/steps/solve/instruction.md",
+      "instruction_length_chars": 2653,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/film_oldboy_neon_trailer.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": "unknown",
+        "duration": "75s",
+        "resolution": "unknown",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/film-oldboy-neon-trailer",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=film_oldboy_neon_trailer)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "film-parasite-2019-neon-trailer",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/film-parasite-2019-neon-trailer/steps/solve/instruction.md",
+      "instruction_length_chars": 2791,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/film_parasite_2019_neon_trailer.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": "unknown",
+        "duration": "unknown",
+        "resolution": "unknown",
+        "container_codec": "unknown",
+        "audio_channels": "2 (stereo)",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/film-parasite-2019-neon-trailer",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=film_parasite_2019_neon_trailer)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "film-stop-making-sense-a24-trailer",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/film-stop-making-sense-a24-trailer/steps/solve/instruction.md",
+      "instruction_length_chars": 2567,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/film_stop_making_sense_a24_trailer.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "unknown",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "2 (stereo)",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/film-stop-making-sense-a24-trailer",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=film_stop_making_sense_a24_trailer)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "football",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/football/steps/solve/instruction.md",
+      "instruction_length_chars": 2145,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/football.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": "unknown",
+        "duration": "75s",
+        "resolution": "unknown",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/football",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=football)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "horror-raremedium",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/horror-raremedium/steps/solve/instruction.md",
+      "instruction_length_chars": 2240,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/horror_raremedium.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "unknown",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/horror-raremedium",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=horror_raremedium)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "late-night",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/late-night/steps/solve/instruction.md",
+      "instruction_length_chars": 2110,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/late_night.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "unknown",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/late-night",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=late_night)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "music-bts-butter-highlight-teaser",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/music-bts-butter-highlight-teaser/steps/solve/instruction.md",
+      "instruction_length_chars": 2720,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/music_bts_butter_highlight_teaser.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": "unknown",
+        "duration": "unknown",
+        "resolution": "unknown",
+        "container_codec": "unknown",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/music-bts-butter-highlight-teaser",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=music_bts_butter_highlight_teaser)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "panel",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/panel/steps/solve/instruction.md",
+      "instruction_length_chars": 2184,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/panel.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": "unknown",
+        "duration": "unknown",
+        "resolution": "unknown",
+        "container_codec": "mp4/h264",
+        "audio_channels": "2 (stereo)",
+        "sample_rate": "44100 or 48000"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/panel",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=panel)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "romance-pickup",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/romance-pickup/steps/solve/instruction.md",
+      "instruction_length_chars": 2264,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/romance_pickup.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "unknown",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/romance-pickup",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=romance_pickup)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "scifi-lie",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/scifi-lie/steps/solve/instruction.md",
+      "instruction_length_chars": 2096,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/scifi_lie.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "unknown",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "2 (stereo)",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/scifi-lie",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=scifi_lie)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "silent-piper",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/silent-piper/steps/solve/instruction.md",
+      "instruction_length_chars": 2136,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/silent_piper.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "unknown",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "2 (stereo)",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/silent-piper",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=silent_piper)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "skateboarding",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/skateboarding/steps/solve/instruction.md",
+      "instruction_length_chars": 2094,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/skateboarding.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "75s",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/skateboarding",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=skateboarding)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "skating",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/skating/steps/solve/instruction.md",
+      "instruction_length_chars": 2173,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/skating.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "75s",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/skating",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=skating)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "soccer",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/soccer/steps/solve/instruction.md",
+      "instruction_length_chars": 2138,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/soccer.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "75s",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/soccer",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=soccer)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "sports-bolt-beijing-2008-100m",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/sports-bolt-beijing-2008-100m/steps/solve/instruction.md",
+      "instruction_length_chars": 2941,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/sports_bolt_beijing_2008_100m.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "75s",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/sports-bolt-beijing-2008-100m",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=sports_bolt_beijing_2008_100m)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "sports-federer-nadal-wimbledon-2008",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/sports-federer-nadal-wimbledon-2008/steps/solve/instruction.md",
+      "instruction_length_chars": 2997,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/sports_federer_nadal_wimbledon_2008.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "unknown",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/sports-federer-nadal-wimbledon-2008",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=sports_federer_nadal_wimbledon_2008)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "sports-tony-hawk-900-1999-v2",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/sports-tony-hawk-900-1999-v2/steps/solve/instruction.md",
+      "instruction_length_chars": 3396,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/sports_tony_hawk_900_1999_v2.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "unknown",
+        "resolution": "1080x1920",
+        "container_codec": "unknown",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/sports-tony-hawk-900-1999-v2",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=sports_tony_hawk_900_1999_v2)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "sports-wc2022-final-argentina-france",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/sports-wc2022-final-argentina-france/steps/solve/instruction.md",
+      "instruction_length_chars": 3393,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/sports_wc2022_final_argentina_france.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "unknown",
+        "resolution": "1080x1920",
+        "container_codec": "unknown",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/sports-wc2022-final-argentina-france",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=sports_wc2022_final_argentina_france)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "sports-yuna-kim-vancouver-2010",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/sports-yuna-kim-vancouver-2010/steps/solve/instruction.md",
+      "instruction_length_chars": 3336,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/sports_yuna_kim_vancouver_2010.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "75s",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/sports-yuna-kim-vancouver-2010",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=sports_yuna_kim_vancouver_2010)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "standup",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/standup/steps/solve/instruction.md",
+      "instruction_length_chars": 2221,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/standup.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "75s",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/standup",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=standup)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "talk-greta-un-climate-2019",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/talk-greta-un-climate-2019/steps/solve/instruction.md",
+      "instruction_length_chars": 2580,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/talk_greta_un_climate_2019.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": "unknown",
+        "duration": "unknown",
+        "resolution": "unknown",
+        "container_codec": "unknown",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/talk-greta-un-climate-2019",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=talk_greta_un_climate_2019)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "talk-mlk-i-have-a-dream",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/talk-mlk-i-have-a-dream/steps/solve/instruction.md",
+      "instruction_length_chars": 3282,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/talk_mlk_i_have_a_dream.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": "unknown",
+        "duration": "unknown",
+        "resolution": "unknown",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/talk-mlk-i-have-a-dream",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=talk_mlk_i_have_a_dream)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "talk-tim-urban-procrastinator-ted",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/talk-tim-urban-procrastinator-ted/steps/solve/instruction.md",
+      "instruction_length_chars": 2311,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/talk_tim_urban_procrastinator_ted.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": "unknown",
+        "duration": "unknown",
+        "resolution": "unknown",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/talk-tim-urban-procrastinator-ted",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=talk_tim_urban_procrastinator_ted)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "ted",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/ted/steps/solve/instruction.md",
+      "instruction_length_chars": 2049,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/ted.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "75s",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/ted",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=ted)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "tennis",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/tennis/steps/solve/instruction.md",
+      "instruction_length_chars": 2068,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/tennis.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "75s",
+        "resolution": "1080x1920",
+        "container_codec": "mp4/h264",
+        "audio_channels": "unknown",
+        "sample_rate": "unknown"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/tennis",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=tennis)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    },
+    {
+      "task_id": "this-is-america",
+      "family": "repurpose",
+      "instruction_path": "agentic_vbench/tasks_repurpose/this-is-america/steps/solve/instruction.md",
+      "instruction_length_chars": 2822,
+      "source_materials": [
+        {
+          "type": "video",
+          "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/this_is_america.mp4",
+          "expected_path": "/workspace/materials/source.mp4"
+        }
+      ],
+      "source_duration_seconds": "unknown",
+      "output_requirements": {
+        "vertical": true,
+        "duration": "75s",
+        "resolution": "1080x1920",
+        "container_codec": "unknown",
+        "audio_channels": "2 (stereo)",
+        "sample_rate": "44100 or 48000"
+      },
+      "verifier_available": true,
+      "verifier_files": {
+        "judge.py": true,
+        "aggregate.py": true,
+        "rubric.json": true,
+        "test.sh": true,
+        "config.yaml": true
+      },
+      "task_metadata": {
+        "task_name": "agentic-vbench/this-is-america",
+        "difficulty": "hard",
+        "category": "video-editing",
+        "tags": [
+          "video-repurpose",
+          "agentic-vbench-repurpose"
+        ],
+        "source": "ameddserM/agentic_vbench_video_repurpose (task_id=this_is_america)",
+        "build_timeout_sec": 1800.0,
+        "cpus": 4,
+        "memory_mb": 8192,
+        "storage_mb": 8192,
+        "allow_internet": true,
+        "agent_timeout_sec": 1800.0,
+        "verifier_timeout_sec": 1800.0
+      },
+      "difficulty": "hard"
+    }
+  ],
+  "notes": []
+}

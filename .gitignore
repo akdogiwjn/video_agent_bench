@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# Docker
+docker-context/
+
+# Results & evidence (generated at runtime)
+results/
+evidence/manifests/
+
+# Config with secrets
+config/config.env
+
+# Upstream source archives
+*.tar.gz
+
+# OS
+.DS_Store
+Thumbs.db

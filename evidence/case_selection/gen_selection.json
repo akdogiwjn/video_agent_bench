@@ -1,0 +1,13 @@
+{
+  "benchmark": "VideoWeaver",
+  "selected_case": null,
+  "status": "blocked",
+  "reason": "VideoWeaver dataset is not yet publicly released (dataset/README.md says 'still being processed'). GEN case selection is blocked until the dataset becomes available.",
+  "selection_rules": [
+    "multi_shot",
+    "multiple_media_capabilities",
+    "public_references",
+    "evaluation_available"
+  ],
+  "candidate_count": 0
+}

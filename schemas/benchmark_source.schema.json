@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "benchmark_source",
+  "description": "Identifies which upstream benchmark a case comes from and its provenance.",
+  "type": "object",
+  "required": ["benchmark", "upstream_commit", "case_id", "task_semantics_modified", "agent"],
+  "properties": {
+    "benchmark": {
+      "type": "string",
+      "enum": ["VideoWeaver", "AgenticVBench"]
+    },
+    "upstream_commit": {
+      "type": "string",
+      "description": "Full git commit SHA of the upstream repo at freeze time."
+    },
+    "category": {
+      "type": "string",
+      "description": "Task category within the benchmark (e.g. GEN category or repurpose family)."
+    },
+    "case_id": {
+      "type": "string",
+      "description": "Official case/task identifier from the upstream benchmark."
+    },
+    "task_semantics_modified": {
+      "type": "boolean",
+      "description": "Must be false — official instruction must not be rewritten."
+    },
+    "agent": {
+      "type": "string",
+      "description": "Agent framework used (always OpenClaw in this project)."
+    }
+  }
+}

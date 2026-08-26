@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "verification_result",
+  "description": "Standardized output from a benchmark verifier adapter.",
+  "type": "object",
+  "required": ["benchmark", "pass", "details"],
+  "properties": {
+    "benchmark": { "type": "string" },
+    "family": { "type": "string" },
+    "task_id": { "type": "string" },
+    "pass": { "type": "boolean" },
+    "reward": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Normalized score in [0, 1]."
+    },
+    "details": {
+      "type": "object",
+      "description": "Per-metric or per-rubric-item breakdown.",
+      "additionalProperties": true
+    },
+    "verifier_commit": { "type": "string" }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "benchmark": "AgenticVBench",
+  "case_id": "football",
+  "upstream_commit": "4bb09e0478be8008f7baba518c5d8ec3f3fab7a3",
+  "files": {
+    "benchmark_source.json": "0cc955a4b7e7d76750df7aa4904afee3057511172016ccb1325731b4ecb19bb7",
+    "task/brief.md": "f259a52b9a77b97bae6730002cb74fbae6724cba061cfcc5afb30e0087a90840",
+    "task/instruction.md": "55a46ce6bb05d758c83f1bc9662eee9d8daa4e431967468cb7b3e794b4170580"
+  },
+  "materials_status": {
+    "source.mp4": {
+      "expected_path": "materials/source.mp4",
+      "huggingface_url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/football.mp4",
+      "status": "pending_download",
+      "note": "Download from HuggingFace and place at materials/source.mp4 before running."
+    }
+  },
+  "visible_capabilities": [
+    "shell",
+    "python",
+    "ffmpeg",
+    "ffprobe",
+    "vlm",
+    "asr"
+  ],
+  "task_semantics_modified": false
+}

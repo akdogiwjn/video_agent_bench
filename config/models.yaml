@@ -1,0 +1,34 @@
+# Model configuration for video_agent_bench
+# These are the models that foundation skills and verifiers expect.
+# Keys are read by skill scripts via environment variables.
+
+models:
+  # VideoWeaver foundation skills
+  image_gen:
+    provider: seedream
+    env_key: ARK_API_KEY
+    note: "VideoWeaver skills/image-gen uses Volcengine ARK API"
+
+  video_gen:
+    provider: seedance
+    env_key: ARK_API_KEY
+    note: "VideoWeaver skills/video-gen uses Volcengine ARK API"
+
+  vision_understanding:
+    provider: volcengine_vlm
+    env_key: ARK_API_KEY
+
+  asr:
+    provider: volcengine_asr
+    env_key: ARK_API_KEY
+
+  # AgenticVBench repurpose verifier
+  verifier_judge_content:
+    provider: anthropic
+    env_key: ANTHROPIC_API_KEY
+    note: "Used by AgenticVBench judge.py for rubric-based content judging"
+
+  verifier_judge_audio_video:
+    provider: gemini
+    env_key: GEMINI_API_KEY
+    note: "Used by AgenticVBench judge.py for audio/video grading"
