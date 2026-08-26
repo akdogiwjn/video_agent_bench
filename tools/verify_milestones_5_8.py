@@ -2,9 +2,9 @@
 """Milestone 5-8 combined acceptance check.
 
 Milestone 5: OpenClaw runner — run_case.py, entrypoint.sh, workspace, trajectory
-Milestone 6: GEN — VideoWeaver Case + Foundation Skills + OpenClaw (blocked)
+Milestone 6: GEN — VBench-derived case + VideoWeaver foundation skills + OpenClaw
 Milestone 7: EDIT — AgenticVBench Repurpose + OpenClaw + generic media env
-Milestone 8: Native verification — VideoWeaver PRM/ORM & AgenticVBench verifier
+Milestone 8: Native verification — project-defined rubric (GEN) & AgenticVBench verifier (EDIT)
 """
 import json
 import os
@@ -36,7 +36,7 @@ def check_milestone5():
             print(f"  MISSING: {path}")
             ok = False
 
-    # Dry run test
+    # Dry run test — EDIT
     print("\n  Dry run test (edit case):")
     result = subprocess.run(
         [sys.executable, "runner/run_case.py", "--case", "edit", "--dry-run", "--skip-verify"],
@@ -46,19 +46,18 @@ def check_milestone5():
         print("    OK: dry run completed")
     else:
         print(f"    FAIL: exit={result.returncode}")
-        print(f"    stdout: {result.stdout[:200]}")
         ok = False
 
-    # GEN blocked test
-    print("\n  Blocked case test (gen):")
+    # Dry run test — GEN
+    print("\n  Dry run test (gen case):")
     result = subprocess.run(
         [sys.executable, "runner/run_case.py", "--case", "gen", "--dry-run"],
-        capture_output=True, text=True, cwd=str(ROOT), timeout=10,
+        capture_output=True, text=True, cwd=str(ROOT), timeout=30,
     )
-    if result.returncode != 0 and "blocked" in result.stderr.lower():
-        print("    OK: GEN case correctly blocked")
+    if result.returncode == 0 and "Run complete" in result.stdout:
+        print("    OK: dry run completed")
     else:
-        print(f"    FAIL: expected blocked, got exit={result.returncode}")
+        print(f"    FAIL: exit={result.returncode}")
         ok = False
 
     return ok
@@ -66,22 +65,65 @@ def check_milestone5():
 
 def check_milestone6():
     print(f"\n{'=' * 60}")
-    print("  Milestone 6: GEN (VideoWeaver)")
+    print("  Milestone 6: GEN (Multi-Benchmark-Derived)")
     print(f"{'=' * 60}")
+    ok = True
 
-    gen_manifest = ROOT / "cases/gen/case_manifest.json"
+    gen_manifest = ROOT / "cases/gen/gen_case_001/case_manifest.json"
     if gen_manifest.is_file():
         with open(gen_manifest) as f:
             m = json.load(f)
+        print(f"  case_id: {m.get('case_id', 'unknown')}")
+        print(f"  case_source: {m.get('case_source', 'unknown')}")
+        print(f"  task_content_source: {m.get('task_content_source', 'unknown')}")
+        print(f"  agentic_execution_basis: {m.get('agentic_execution_basis', 'unknown')}")
         print(f"  status: {m.get('status', 'unknown')}")
-        if m.get("status") == "blocked":
-            print(f"  reason: {m.get('reason', 'unknown')}")
-            print("  NOTE: GEN is blocked because VideoWeaver dataset is not yet released.")
-            print("  The runner and foundation skills infrastructure is ready.")
-            print("  GEN will work once the dataset becomes available.")
-            return True
-    print("  FAIL: no gen case manifest")
-    return False
+        print(f"  visible_capabilities: {m.get('visible_capabilities', [])}")
+
+        if m.get("case_source") != "multi-benchmark-derived":
+            print("  FAIL: case_source should be 'multi-benchmark-derived'")
+            ok = False
+        if m.get("official_benchmark_case") is not False:
+            print("  FAIL: official_benchmark_case should be false")
+            ok = False
+    else:
+        print("  MISSING: cases/gen/gen_case_001/case_manifest.json")
+        ok = False
+
+    # Check original prompt preserved
+    orig = ROOT / "cases/gen/gen_case_001/source/original_prompt.txt"
+    if orig.is_file():
+        print(f"  OK: original_prompt.txt preserved ({orig.stat().st_size} bytes)")
+    else:
+        print("  MISSING: source/original_prompt.txt")
+        ok = False
+
+    # Check adaptation.json
+    adapt = ROOT / "cases/gen/gen_case_001/adaptation.json"
+    if adapt.is_file():
+        with open(adapt) as f:
+            a = json.load(f)
+        print(f"  OK: adaptation.json ({len(a.get('changes', []))} changes documented)")
+    else:
+        print("  MISSING: adaptation.json")
+        ok = False
+
+    # Check instruction does not hardcode tool sequence
+    instr = ROOT / "cases/gen/gen_case_001/task/instruction.txt"
+    if instr.is_file():
+        content = instr.read_text()
+        forbidden = ["first call", "step 1", "step 2", "call image-gen", "call video-gen",
+                     "must plan", "must generate storyboard", "call merge-video"]
+        found_forbidden = [kw for kw in forbidden if kw.lower() in content.lower()]
+        if found_forbidden:
+            print(f"  WARNING: instruction may hardcode workflow: {found_forbidden}")
+        else:
+            print(f"  OK: instruction does not hardcode tool call sequence")
+    else:
+        print("  MISSING: task/instruction.txt")
+        ok = False
+
+    return ok
 
 
 def check_milestone7():
@@ -98,7 +140,6 @@ def check_milestone7():
         print(f"  benchmark: {m.get('benchmark', 'unknown')}")
         print(f"  visible_capabilities: {m.get('visible_capabilities', [])}")
 
-        # Check materials status
         for name, info in m.get("materials_status", {}).items():
             print(f"  material {name}: {info.get('status', 'unknown')}")
             if info.get("status") == "pending_download":
@@ -110,15 +151,10 @@ def check_milestone7():
     # Check instruction.md is from upstream
     instr = ROOT / "cases/edit/task/instruction.md"
     if instr.is_file():
-        print(f"  instruction.md: present ({instr.stat().st_size} bytes)")
+        print(f"  OK: instruction.md present ({instr.stat().st_size} bytes)")
     else:
         print("  MISSING: instruction.md")
         ok = False
-
-    print("\n  NOTE: To run the EDIT case:")
-    print("    1. Download source.mp4 from HuggingFace")
-    print("    2. Build Docker image: docker build -t video-agent-bench:1.0 -f runtime/Dockerfile runtime/")
-    print("    3. Run: python3 runner/run_case.py --case edit")
 
     return ok
 
@@ -132,8 +168,8 @@ def check_milestone8():
     verifiers = [
         ("verifier/verify_provenance.py", "V0: Provenance verifier"),
         ("verifier/verify_execution.py", "V1: Execution integrity verifier"),
-        ("verifier/gen/evaluate.py", "GEN verifier adapter (VideoWeaver PRM/ORM)"),
-        ("verifier/edit/evaluate.py", "EDIT verifier adapter (AgenticVBench)"),
+        ("verifier/gen/evaluate.py", "GEN verifier (project-defined rubric)"),
+        ("verifier/edit/evaluate.py", "EDIT verifier (AgenticVBench adapter)"),
     ]
     for path, desc in verifiers:
         p = ROOT / path
@@ -143,18 +179,24 @@ def check_milestone8():
             print(f"  MISSING: {path}")
             ok = False
 
+    # Check GEN verifier uses project-defined rubric
+    gen_eval = ROOT / "verifier/gen/evaluate.py"
+    if gen_eval.is_file():
+        content = gen_eval.read_text()
+        if "project-defined" in content and "official_videoweaver_rubric" in content:
+            print("  OK: GEN verifier uses project-defined rubric (not official)")
+        else:
+            print("  WARNING: GEN verifier may not properly label rubric source")
+
     # Check verifier isolation
     print("\n  Verifier isolation check:")
     edit_eval = ROOT / "verifier/edit/evaluate.py"
     if edit_eval.is_file():
         content = edit_eval.read_text()
-        # Verifier should not import from runner or workspace
         if "from runner" not in content and "import workspace" not in content:
             print("    OK: EDIT verifier is isolated from runner")
-        else:
-            print("    WARNING: EDIT verifier imports runner modules")
 
-    # Check that verifier files are in upstream (frozen)
+    # Check verifier files frozen in upstream
     verifier_files = ROOT / "upstream/agentic_vbench/tasks_repurpose/football/steps/solve/tests"
     if verifier_files.is_dir():
         files = [f.name for f in verifier_files.iterdir() if f.is_file()]
@@ -163,11 +205,23 @@ def check_milestone8():
         print("    MISSING: AgenticVBench verifier files not frozen")
         ok = False
 
-    # Check GEN verifier status
-    print("\n  GEN verifier status:")
-    print("    BLOCKED: VideoWeaver evaluation code (AutomaticSkillOptimization/)")
-    print("    was not frozen in Milestone 1. The adapter is ready but needs")
-    print("    the upstream evaluation code to be fetched.")
+    # Check GEN rubric
+    gen_rubric = ROOT / "cases/gen/gen_case_001/rubric/rubric_deterministic.json"
+    if gen_rubric.is_file():
+        with open(gen_rubric) as f:
+            r = json.load(f)
+        print(f"    OK: GEN rubric: {r.get('rubric_source', 'unknown')}, "
+              f"basis={r.get('rubric_basis', [])}, "
+              f"official_videoweaver_rubric={r.get('official_videoweaver_rubric', 'unknown')}")
+        if r.get("rubric_source") != "project-defined":
+            print("    FAIL: rubric_source should be 'project-defined'")
+            ok = False
+        if r.get("official_videoweaver_rubric") is not False:
+            print("    FAIL: official_videoweaver_rubric should be false")
+            ok = False
+    else:
+        print("    MISSING: GEN rubric")
+        ok = False
 
     return ok
 

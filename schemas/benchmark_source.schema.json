@@ -1,33 +1,51 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "benchmark_source",
-  "description": "Identifies which upstream benchmark a case comes from and its provenance.",
+  "description": "Identifies the provenance of a benchmark case, including its source type and all upstream benchmarks involved.",
   "type": "object",
-  "required": ["benchmark", "upstream_commit", "case_id", "task_semantics_modified", "agent"],
+  "required": ["case_id", "case_source", "agent"],
   "properties": {
-    "benchmark": {
-      "type": "string",
-      "enum": ["VideoWeaver", "AgenticVBench"]
-    },
-    "upstream_commit": {
-      "type": "string",
-      "description": "Full git commit SHA of the upstream repo at freeze time."
-    },
-    "category": {
-      "type": "string",
-      "description": "Task category within the benchmark (e.g. GEN category or repurpose family)."
-    },
     "case_id": {
       "type": "string",
-      "description": "Official case/task identifier from the upstream benchmark."
+      "description": "Unique case identifier within this project."
     },
-    "task_semantics_modified": {
-      "type": "boolean",
-      "description": "Must be false — official instruction must not be rewritten."
-    },
-    "agent": {
+    "case_source": {
       "type": "string",
-      "description": "Agent framework used (always OpenClaw in this project)."
-    }
+      "enum": ["official", "benchmark-derived", "multi-benchmark-derived", "videoweaver_official_reserved"],
+      "description": "How the case was created: official (from upstream benchmark), benchmark-derived (adapted from public benchmark), multi-benchmark-derived (combines multiple benchmark sources), videoweaver_official_reserved (reserved for future VideoWeaver dataset release, currently disabled)."
+    },
+    "official_benchmark_case": {
+      "type": "boolean",
+      "description": "True if this case is an unmodified official case from an upstream benchmark. False for derived/adapted cases."
+    },
+    "task_content_source": {
+      "type": "object",
+      "description": "The benchmark that provides the task content/prompt.",
+      "properties": {
+        "benchmark": {"type": "string"},
+        "repository": {"type": "string"},
+        "commit": {"type": "string"},
+        "prompt_id": {"type": "string"},
+        "prompt_sha256": {"type": "string"},
+        "source_file": {"type": "string"}
+      }
+    },
+    "agentic_execution_basis": {
+      "type": "object",
+      "description": "The benchmark that provides the agentic execution pattern.",
+      "properties": {
+        "benchmark": {"type": "string"},
+        "repository": {"type": "string"},
+        "commit": {"type": "string"},
+        "role": {"type": "string"}
+      }
+    },
+    "foundation_skills_source": {"type": "string"},
+    "methodology_basis": {"type": "string"},
+    "adapted": {"type": "boolean"},
+    "adaptation_file": {"type": "string"},
+    "task_semantics_modified": {"type": "boolean"},
+    "task_semantics_modification_reason": {"type": "string"},
+    "agent": {"type": "string"}
   }
 }

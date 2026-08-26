@@ -7,6 +7,7 @@
   "properties": {
     "benchmark": { "type": "string" },
     "case_id": { "type": "string" },
+    "case_source": { "type": "string", "description": "official, benchmark-derived, or multi-benchmark-derived" },
     "benchmark_commit": { "type": "string" },
     "agent": { "type": "string" },
     "agent_version": { "type": "string" },
@@ -14,6 +15,9 @@
     "docker_image": { "type": "string" },
     "docker_image_id": { "type": "string" },
     "task_sha256": { "type": "string" },
+    "instruction_sha256": { "type": "string", "description": "SHA256 of the final instruction given to the agent" },
+    "original_prompt_sha256": { "type": "string", "description": "SHA256 of the original benchmark prompt (before adaptation)" },
+    "adaptation_sha256": { "type": "string", "description": "SHA256 of the adaptation.json file" },
     "input_sha256": {
       "type": "object",
       "description": "Map of input file paths to SHA256 hashes.",
@@ -24,6 +28,7 @@
       "description": "Map of skill file paths to SHA256 hashes.",
       "additionalProperties": { "type": "string" }
     },
+    "verifier_sha256": { "type": "string", "description": "SHA256 of the verifier/rubric files" },
     "started_at": { "type": "string", "format": "date-time" },
     "finished_at": { "type": "string", "format": "date-time" },
     "agent_exit_code": { "type": "integer" }

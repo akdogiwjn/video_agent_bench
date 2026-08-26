@@ -1,0 +1,27 @@
+{
+  "case_id": "gen_case_001",
+  "case_source": "multi-benchmark-derived",
+  "official_benchmark_case": false,
+  "task_content_source": "VBench",
+  "agentic_execution_basis": "VideoWeaver",
+  "methodology_basis": "MLPerf",
+  "status": "ready",
+  "files": {
+    "adaptation.json": "c297fae196a367933aa4fe05935d79a1e81894629aebf2f0cac250f7a0e47679",
+    "benchmark_source.json": "990cdb722f828d2727dbe2d26c776a539d2a38ef003e78783ec7adfc8680a03d",
+    "rubric/rubric_deterministic.json": "3ccb75540db69c33e82591a7fe6d1aaa20154b8b2050c313691d70fb30507127",
+    "source/original_prompt.txt": "140e2594cce0d2b8ba8368ea327d28b571dadeb4dbfda24dea611389a2720840",
+    "task/instruction.txt": "c7e6c141487f77d92435bc9b1eee8d985000bb988dbc0c883e98fc818c17dd5e"
+  },
+  "references": {},
+  "visible_capabilities": [
+    "shell",
+    "python",
+    "image-gen",
+    "video-gen",
+    "merge-video",
+    "extract-video-frame"
+  ],
+  "task_semantics_modified": true,
+  "adaptation_file": "adaptation.json"
+}

@@ -1,0 +1,26 @@
+{
+  "source_prompt_modified": true,
+  "source_prompt_sha256": "140e2594cce0d2b8ba8368ea327d28b571dadeb4dbfda24dea611389a2720840",
+  "instruction_sha256": "c7e6c141487f77d92435bc9b1eee8d985000bb988dbc0c883e98fc818c17dd5e",
+  "changes": [
+    {
+      "type": "output_contract",
+      "description": "Added explicit output path requirement: final video must be saved to /workspace/output/final.mp4"
+    },
+    {
+      "type": "output_contract",
+      "description": "Added format requirement: MP4 with H.264 video codec, minimum resolution 1280x720"
+    },
+    {
+      "type": "long_form_extension",
+      "description": "Extended single-prompt into a long-form multi-shot video task: 15-30 seconds depicting sunset progression over time"
+    },
+    {
+      "type": "long_form_extension",
+      "description": "Added requirement for multiple shots showing the sky at different stages of the sunset"
+    }
+  ],
+  "original_prompt_preserved": true,
+  "original_prompt_path": "source/original_prompt.txt",
+  "note": "The original VBench prompt describes content only. The instruction adds output format/path and long-form video requirements without specifying any tool call sequence, planning steps, or skill invocation order. The agent decides how to accomplish the task."
+}

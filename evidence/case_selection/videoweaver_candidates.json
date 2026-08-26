@@ -1,8 +1,14 @@
 {
   "benchmark": "VideoWeaver",
-  "dataset_root": "upstream/videoweaver/dataset (not yet released)",
+  "dataset_root": "not available — VideoWeaver dataset not yet publicly released",
+  "status": "reserved",
+  "note": "This inventory is RESERVED for future VideoWeaver dataset release. GEN case selection now uses VBench prompts instead. See evidence/case_selection/vbench_candidates.json.",
   "categories": [],
   "total_cases": 0,
   "cases": [],
-  "notes": []
+  "notes": [
+    "VideoWeaver dataset is not yet publicly released (dataset/README.md says 'still being processed').",
+    "This scanner is disabled. GEN cases are now multi-benchmark-derived from VBench prompts.",
+    "VideoWeaver is still used as: foundation skills source, agentic execution pattern, and evaluation methodology basis."
+  ]
 }

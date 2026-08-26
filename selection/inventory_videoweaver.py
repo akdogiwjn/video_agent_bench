@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
-"""Inventory VideoWeaver dataset cases.
+"""RESERVED: Inventory VideoWeaver dataset cases.
 
-Scans a VideoWeaver dataset root for task categories and case folders,
-extracting only observable metadata (file types, counts, rubric presence).
-Does NOT guess or interpret task semantics.
+Status: DISABLED — VideoWeaver dataset is not yet publicly released.
+This module is reserved for future use when the VideoWeaver dataset
+becomes available. It is NOT used for GEN case selection.
+
+GEN case selection now uses VBench public prompt suite instead.
+See: case_design/inventory_vbench.py and selection/select_gen_case.py
+
+When the VideoWeaver dataset is released, this module can be re-enabled
+to scan official VideoWeaver cases as an alternative GEN case source.
+
+Original function: scans a VideoWeaver dataset root for task categories
+and case folders, extracting observable metadata (file types, counts,
+rubric presence). Does NOT guess or interpret task semantics.
 
 Expected dataset layout (from VideoWeaver README):
     dataset/

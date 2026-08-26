@@ -1,0 +1,10 @@
+Generate a complete long-form video based on the following creative prompt:
+
+As the sun dips below the horizon, the sky transforms into a breathtaking canvas of vibrant colors. Wispy clouds stretch across the expanse, painted in hues of fiery orange, deep crimson, and soft lavender, creating a mesmerizing tapestry. The sun's golden rays pierce through the cloud formations, casting a warm glow that dances across the sky. Shadows play among the clouds, adding depth and dimension to the scene. The gentle breeze causes the clouds to shift and morph, creating ever-changing shapes that captivate the eye. As the light fades, the sky gradually deepens into a rich indigo, leaving behind a serene and tranquil atmosphere.
+
+Requirements:
+- The final video should be 15-30 seconds long, depicting the sunset progression over time.
+- The video should consist of multiple shots showing the sky at different stages of the sunset.
+- The final result must be saved as /workspace/output/final.mp4.
+- Output format: MP4 with H.264 video codec.
+- The video should have a resolution of at least 1280x720.

@@ -1,13 +1,50 @@
 {
-  "benchmark": "VideoWeaver",
-  "selected_case": null,
-  "status": "blocked",
-  "reason": "VideoWeaver dataset is not yet publicly released (dataset/README.md says 'still being processed'). GEN case selection is blocked until the dataset becomes available.",
+  "selected_prompt_id": "gpt_enhanced_longer_scenery_045",
+  "selected_category": "scenery",
+  "selected_prompt_type": "gpt_enhanced_longer",
+  "selected_prompt": "As the sun dips below the horizon, the sky transforms into a breathtaking canvas of vibrant colors. Wispy clouds stretch across the expanse, painted in hues of fiery orange, deep crimson, and soft lavender, creating a mesmerizing tapestry. The sun's golden rays pierce through the cloud formations, casting a warm glow that dances across the sky. Shadows play among the clouds, adding depth and dimension to the scene. The gentle breeze causes the clouds to shift and morph, creating ever-changing shapes that captivate the eye. As the light fades, the sky gradually deepens into a rich indigo, leaving behind a serene and tranquil atmosphere.",
+  "selected_prompt_sha256": "140e2594cce0d2b8ba8368ea327d28b571dadeb4dbfda24dea611389a2720840",
+  "case_source": "multi-benchmark-derived",
+  "task_content_source": "VBench",
+  "agentic_execution_basis": "VideoWeaver",
+  "methodology_basis": "MLPerf",
+  "official_benchmark_case": false,
   "selection_rules": [
-    "multi_shot",
-    "multiple_media_capabilities",
-    "public_references",
-    "evaluation_available"
+    "public_benchmark_source",
+    "moderate_complexity",
+    "not_single_call",
+    "scene_diversity",
+    "evaluable",
+    "no_private_materials",
+    "no_hardcoded_workflow"
   ],
-  "candidate_count": 0
+  "candidate_count": 613,
+  "excluded_count": 987,
+  "complexity_range": {
+    "min": 2,
+    "median": 3,
+    "max": 7
+  },
+  "selected_complexity_score": 3,
+  "selected_complexity_detail": {
+    "word_count": 104,
+    "char_count": 643,
+    "multi_scene_indicators": 1,
+    "character_indicators": 0,
+    "action_indicators": 1,
+    "environment_indicators": 0,
+    "distinct_environments": 0,
+    "distinct_characters": 0,
+    "complexity_score": 3
+  },
+  "reason": "Selected from 613 candidates that pass all GEN filters (611 gpt_enhanced_longer prompts in selection pool). Complexity score 3 is at/above median (3) of range [2, 7]. Prompt source: VBench commit fd18b3d055cb.",
+  "status": "selected",
+  "excluded_summary": {
+    "total_excluded": 987,
+    "reasons": {
+      "too_short": 705,
+      "likely_single_call": 796,
+      "low_scene_diversity": 931
+    }
+  }
 }

@@ -1,0 +1,80 @@
+{
+  "case_id": "gen_case_001",
+  "rubric_source": "project-defined",
+  "rubric_basis": ["VBench", "VideoWeaver"],
+  "official_videoweaver_rubric": false,
+  "official_vbench_rubric": false,
+  "description": "Deterministic format and content checks derived from VBench quality dimensions and VideoWeaver output evaluation criteria. This is NOT an official rubric from either benchmark.",
+  "items": [
+    {
+      "id": "F-01",
+      "pillar": "format",
+      "weight": 1,
+      "criterion": "Output file exists at /workspace/output/final.mp4",
+      "check": "file_exists",
+      "judge": "deterministic"
+    },
+    {
+      "id": "F-02",
+      "pillar": "format",
+      "weight": 1,
+      "criterion": "Video is MP4 container with H.264 video codec",
+      "check": "ffprobe format_name contains 'mp4' and video codec_name is 'h264'",
+      "judge": "deterministic"
+    },
+    {
+      "id": "F-03",
+      "pillar": "format",
+      "weight": 1,
+      "criterion": "Video resolution is at least 1280x720",
+      "check": "ffprobe width >= 1280 and height >= 720",
+      "judge": "deterministic"
+    },
+    {
+      "id": "F-04",
+      "pillar": "format",
+      "weight": 1,
+      "criterion": "Video duration is between 15 and 30 seconds inclusive",
+      "check": "ffprobe duration in [15.0, 30.0]",
+      "judge": "deterministic"
+    },
+    {
+      "id": "C-01",
+      "pillar": "content",
+      "weight": 1,
+      "criterion": "Video depicts a sunset/sky scene as described in the prompt",
+      "check": "Visual inspection or VLM-based content check (non-deterministic)",
+      "judge": "vlm_optional"
+    },
+    {
+      "id": "C-02",
+      "pillar": "content",
+      "weight": 1,
+      "criterion": "Video contains multiple distinct shots showing different sunset stages",
+      "check": "Scene detection via scenedetect or frame analysis (non-deterministic)",
+      "judge": "deterministic_optional"
+    },
+    {
+      "id": "P-01",
+      "pillar": "process",
+      "weight": 1,
+      "criterion": "Agent produced intermediate artifacts (images, video clips, or audio) before final merge",
+      "check": "workspace/output or workspace/logs contains intermediate files",
+      "judge": "deterministic"
+    },
+    {
+      "id": "P-02",
+      "pillar": "process",
+      "weight": 1,
+      "criterion": "Agent trajectory contains at least one tool call to a media generation or processing capability",
+      "check": "trajectory.json contains type=tool_call entries",
+      "judge": "deterministic"
+    }
+  ],
+  "scoring": {
+    "format_weight": 0.4,
+    "content_weight": 0.3,
+    "process_weight": 0.3,
+    "note": "Final reward = weighted average of pillar pass rates. Format pillar is fully deterministic. Content pillar may use VLM (optional). Process pillar is deterministic from trajectory."
+  }
+}

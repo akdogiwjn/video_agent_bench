@@ -1,0 +1,32 @@
+{
+  "case_id": "gen_case_001",
+  "case_source": "multi-benchmark-derived",
+  "official_benchmark_case": false,
+
+  "task_content_source": {
+    "benchmark": "VBench",
+    "repository": "Vchitect/VBench",
+    "commit": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490",
+    "prompt_id": "gpt_enhanced_longer_scenery_045",
+    "prompt_sha256": "140e2594cce0d2b8ba8368ea327d28b571dadeb4dbfda24dea611389a2720840",
+    "source_file": "prompts/augmented_prompts/gpt_enhanced_prompts/prompts_per_category_longer/scenery_longer.txt",
+    "source_line": 45
+  },
+
+  "agentic_execution_basis": {
+    "benchmark": "VideoWeaver",
+    "repository": "JianhuiWei7/VideoWeaver",
+    "commit": "c809392fe6c2c8b22472049684aaefc650e31bde",
+    "role": "Agentic execution pattern, foundation skills, process/output evaluation methodology"
+  },
+
+  "foundation_skills_source": "VideoWeaver",
+  "methodology_basis": "MLPerf",
+
+  "adapted": true,
+  "adaptation_file": "adaptation.json",
+  "task_semantics_modified": true,
+  "task_semantics_modification_reason": "Original VBench prompt is a single-shot text-to-video prompt. Adapted into a long-form multi-shot video generation task with explicit output contract. All adaptations are documented in adaptation.json.",
+
+  "agent": "OpenClaw"
+}

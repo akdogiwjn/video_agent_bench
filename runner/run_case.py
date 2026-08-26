@@ -54,14 +54,37 @@ from runner.openclaw_runner import (
 )
 
 
-def load_case(case_type: str) -> tuple[Path, dict]:
-    """Load case directory and manifest for the given case type (gen/edit)."""
-    case_dir = ROOT / "cases" / case_type
-    manifest_path = case_dir / "case_manifest.json"
+def load_case(case_type: str, case_id: str | None = None) -> tuple[Path, dict]:
+    """Load case directory and manifest for the given case type (gen/edit).
 
-    if not manifest_path.is_file():
-        print(f"ERROR: case manifest not found: {manifest_path}", file=sys.stderr)
-        sys.exit(1)
+    For GEN cases with subdirectory layout (e.g. cases/gen/gen_case_001/),
+    case_id specifies which case to load. If case_id is not specified,
+    the first case with a case_manifest.json is used.
+    """
+    base_dir = ROOT / "cases" / case_type
+
+    # Try direct manifest first (EDIT layout: cases/edit/case_manifest.json)
+    manifest_path = base_dir / "case_manifest.json"
+    if manifest_path.is_file():
+        case_dir = base_dir
+    else:
+        # Look for case subdirectories (GEN layout: cases/gen/gen_case_001/)
+        case_dir = None
+        if case_id:
+            candidate = base_dir / case_id
+            if (candidate / "case_manifest.json").is_file():
+                case_dir = candidate
+        else:
+            # Auto-discover first available case
+            for d in sorted(base_dir.iterdir()):
+                if d.is_dir() and (d / "case_manifest.json").is_file():
+                    case_dir = d
+                    break
+
+        if case_dir is None:
+            print(f"ERROR: no case manifest found under {base_dir}", file=sys.stderr)
+            sys.exit(1)
+        manifest_path = case_dir / "case_manifest.json"
 
     with open(manifest_path) as f:
         manifest = json.load(f)
@@ -91,12 +114,14 @@ def determine_task_file(case_dir: Path, manifest: dict) -> str:
 def run_case(args):
     """Main execution flow."""
     case_type = args.case
-    case_dir, manifest = load_case(case_type)
+    case_dir, manifest = load_case(case_type, getattr(args, 'case_id', None))
 
     print(f"=== video-agent-bench runner ===")
     print(f"  case type: {case_type}")
     print(f"  case id:   {manifest.get('case_id', 'unknown')}")
-    print(f"  benchmark: {manifest.get('benchmark', 'unknown')}")
+    print(f"  case source: {manifest.get('case_source', 'unknown')}")
+    benchmark = manifest.get('benchmark', manifest.get('task_content_source', 'unknown'))
+    print(f"  benchmark: {benchmark}")
 
     # 1. Verify SHA256
     print(f"\n[1/12] Verifying case files...")
@@ -221,10 +246,31 @@ def run_case(args):
 
     # 12. Write run_manifest.json
     print(f"\n[12/12] Writing run_manifest.json...")
+    # Determine benchmark name for manifest
+    benchmark_name = manifest.get("benchmark", manifest.get("task_content_source", "unknown"))
+    # For GEN multi-benchmark-derived cases, use agentic_execution_basis as the primary benchmark
+    if manifest.get("case_source") == "multi-benchmark-derived":
+        benchmark_name = manifest.get("task_content_source", "multi-benchmark-derived")
+
+    # Get upstream commit
+    upstream_commit = manifest.get("upstream_commit", "unknown")
+    if upstream_commit == "unknown":
+        # Try to get from benchmark_source.json
+        bs_path = case_dir / "benchmark_source.json"
+        if bs_path.is_file():
+            with open(bs_path) as f:
+                bs = json.load(f)
+            tcs = bs.get("task_content_source", {})
+            if isinstance(tcs, dict):
+                upstream_commit = tcs.get("commit", "unknown")
+            agb = bs.get("agentic_execution_basis", {})
+            if isinstance(agb, dict) and upstream_commit == "unknown":
+                upstream_commit = agb.get("commit", "unknown")
+
     run_manifest = build_run_manifest(
-        benchmark=manifest.get("benchmark", "unknown"),
+        benchmark=benchmark_name,
         case_id=manifest.get("case_id", "unknown"),
-        benchmark_commit=manifest.get("upstream_commit", "unknown"),
+        benchmark_commit=upstream_commit,
         agent="OpenClaw",
         agent_version="unknown",
         agent_model=args.model,
@@ -237,6 +283,9 @@ def run_case(args):
         finished_at=finished_at,
         agent_exit_code=result["exit_code"],
     )
+    # Add multi-benchmark-derived fields
+    run_manifest["case_source"] = manifest.get("case_source", "unknown")
+    run_manifest["official_benchmark_case"] = manifest.get("official_benchmark_case", False)
     write_run_manifest(run_manifest, results_dir / "run_manifest.json")
 
     print(f"\n=== Run complete ===")
@@ -250,6 +299,8 @@ def main():
     parser = argparse.ArgumentParser(description="Run a video_agent_bench case")
     parser.add_argument("--case", required=True, choices=["gen", "edit"],
                         help="Case type to run")
+    parser.add_argument("--case-id", default=None,
+                        help="Case ID (for GEN cases with subdirectory layout, e.g. gen_case_001)")
     parser.add_argument("--image", default="video-agent-bench:1.0",
                         help="Docker image to use")
     parser.add_argument("--model", default=os.environ.get("AGENT_MODEL", "anthropic/claude-sonnet-4-6"),
