@@ -21,3 +21,9 @@ config/config.env
 # OS
 .DS_Store
 Thumbs.db
+
+# Large media files — download locally, do not commit
+cases/edit/materials/*.mp4
+cases/gen/*/references/*.mp4
+cases/gen/*/references/*.avi
+cases/gen/*/references/*.mov
