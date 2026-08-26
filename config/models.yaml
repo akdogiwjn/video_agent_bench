@@ -19,8 +19,18 @@ models:
     env_key: ARK_API_KEY
 
   asr:
+    provider: whisper_local
+    note: "ASR uses local Whisper model (pre-cached in Docker). No API key needed."
+
+  asr_volcengine:
     provider: volcengine_asr
-    env_key: ARK_API_KEY
+    env_keys: [ASR_APPID, ASR_TOKEN]
+    note: "VideoWeaver skills/automatic-speech-recognition uses Volcengine ASR (requires ASR_APPID + ASR_TOKEN)"
+
+  tts:
+    provider: volcengine_tts
+    env_keys: [VOLCENGINE_TTS_APPID, VOLCENGINE_TTS_TOKEN]
+    note: "VideoWeaver skills/text-to-speech uses Volcengine TTS"
 
   # AgenticVBench repurpose verifier
   verifier_judge_content:

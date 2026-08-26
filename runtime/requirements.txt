@@ -11,6 +11,7 @@ scenedetect>=0.6.4
 ImageHash>=4.3.1
 pytesseract>=0.3.10
 openai-whisper>=20231117
+moviepy>=2.0.0
 
 # --- API clients ---
 openai>=1.0.0

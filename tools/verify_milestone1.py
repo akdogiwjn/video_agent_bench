@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Milestone 1 acceptance check: print commits, scan VBench prompts, scan Repurpose tasks."""
+"""Milestone 1 acceptance check: print commits, scan VBench prompts, scan Repurpose tasks.
+
+NOTE: This is a STATIC SPEC CHECK, not an E2E test.
+"""
 import json
 import sys
 from pathlib import Path
@@ -16,7 +19,6 @@ def print_section(title):
 def main():
     all_ok = True
 
-    # --- 1. Print all benchmark commits ---
     print_section("1. Benchmark Commits")
     for name, path in [
         ("VBench", "upstream/vbench/COMMIT"),
@@ -31,7 +33,6 @@ def main():
             print(f"  {name}: MISSING")
             all_ok = False
 
-    # --- 2. VBench prompts (GEN task content source) ---
     print_section("2. VBench Prompts (GEN task content source)")
     vb_candidates = ROOT / "evidence/case_selection/vbench_candidates.json"
     if vb_candidates.is_file():
@@ -43,23 +44,18 @@ def main():
         print(f"  original: {orig}")
         print(f"  gpt-enhanced longer: {longer}")
     else:
-        print("  candidates file not found — run: python3 case_design/inventory_vbench.py")
+        print("  candidates file not found")
         all_ok = False
 
-    # --- 2b. VideoWeaver (reserved) ---
     print_section("2b. VideoWeaver Dataset (RESERVED)")
     vw_candidates = ROOT / "evidence/case_selection/videoweaver_candidates.json"
     if vw_candidates.is_file():
         with open(vw_candidates) as f:
             data = json.load(f)
         print(f"  status: {data.get('status', 'unknown')}")
-        print(f"  total cases: {data['total_cases']}")
-        for note in data.get("notes", [])[:2]:
-            print(f"  note: {note}")
     else:
         print("  candidates file not found")
 
-    # --- 3. AgenticVBench Repurpose tasks ---
     print_section("3. AgenticVBench Repurpose Tasks")
     avb_candidates = ROOT / "evidence/case_selection/agentic_vbench_repurpose_candidates.json"
     if avb_candidates.is_file():
@@ -69,14 +65,13 @@ def main():
         with_verifier = sum(1 for t in data["tasks"] if t["verifier_available"])
         print(f"  with verifier: {with_verifier}")
     else:
-        print("  candidates file not found — run inventory script first")
+        print("  candidates file not found")
         all_ok = False
 
-    # --- 4. Source manifests ---
     print_section("4. Source Manifests")
     for name, path in [
-        ("VBench", "upstream/vbench/source_manifest.json"),
-        ("VideoWeaver", "upstream/videoweaver/source_manifest.json"),
+        ("VBench", "upstream/vbench/prompts/source_manifest.json"),
+        ("VideoWeaver", "upstream/videoweaver/skills/source_manifest.json"),
         ("AgenticVBench", "upstream/agentic_vbench/source_manifest.json"),
     ]:
         f = ROOT / path
@@ -90,7 +85,7 @@ def main():
 
     print()
     if all_ok:
-        print("Milestone 1: ALL CHECKS PASSED")
+        print("Milestone 1: STATIC CHECKS PASSED")
     else:
         print("Milestone 1: SOME CHECKS FAILED")
         sys.exit(1)

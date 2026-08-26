@@ -27,6 +27,20 @@ def get_docker_image_id(image: str) -> str:
     return "unknown"
 
 
+def get_openclaw_version(image: str) -> str:
+    """Get the OpenClaw version from the Docker image."""
+    try:
+        result = subprocess.run(
+            ["docker", "run", "--rm", image, "bash", "-c", "openclaw --version"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except Exception:
+        pass
+    return "unknown"
+
+
 def run_openclaw_in_docker(
     workspace: Path,
     task_file: str,
@@ -34,11 +48,16 @@ def run_openclaw_in_docker(
     agent_model: str,
     timeout: int = 3600,
     env_vars: dict[str, str] | None = None,
+    openclaw_state_dir: Path | None = None,
 ) -> dict:
     """Run OpenClaw agent inside a Docker container.
 
-    Mounts the workspace directory and runs the entrypoint.sh with the task file.
-    Captures stdout, stderr, and collects trajectory artifacts.
+    Mounts:
+    - workspace → /workspace (task, materials, references, skills, output, logs)
+    - openclaw_state_dir → /root/.openclaw (session data, trajectory, raw state)
+
+    The openclaw_state_dir persists OpenClaw's internal state (sessions,
+    trajectory, agent data) so it survives container shutdown.
 
     Returns a dict with:
         - exit_code: int
@@ -49,21 +68,30 @@ def run_openclaw_in_docker(
     workspace = Path(workspace).resolve()
     task_file_abs = str(workspace / task_file)
 
-    # Docker mount: workspace -> /workspace
+    # Docker mounts: workspace + OpenClaw state directory
     volumes = {str(workspace): {"bind": "/workspace", "mode": "rw"}}
+
+    # Mount OpenClaw state directory to persist raw trajectory
+    if openclaw_state_dir is None:
+        openclaw_state_dir = workspace.parent / "openclaw_state"
+    openclaw_state_dir = Path(openclaw_state_dir).resolve()
+    openclaw_state_dir.mkdir(parents=True, exist_ok=True)
+    volumes[str(openclaw_state_dir)] = {"bind": "/root/.openclaw", "mode": "rw"}
 
     # Environment variables
     env = {
         "AGENT_MODEL": agent_model,
         "TIMEOUT": str(timeout),
+        "OUTPUT_DIR": "/workspace/output",
     }
     if env_vars:
         env.update(env_vars)
 
     # Build docker run command
+    container_name = f"video-agent-bench-{int(time.time())}"
     cmd = [
-        "docker", "run", "--rm",
-        "--name", f"video-agent-bench-{int(time.time())}",
+        "docker", "run",
+        "--name", container_name,
     ]
     for k, v in env.items():
         cmd.extend(["-e", f"{k}={v}"])
@@ -85,21 +113,31 @@ def run_openclaw_in_docker(
         "stdout": result.stdout,
         "stderr": result.stderr,
         "duration_seconds": duration,
+        "container_name": container_name,
     }
 
 
-def collect_trajectory(workspace: Path, results_dir: Path) -> dict:
-    """Collect trajectory artifacts from the workspace.
+def collect_trajectory(workspace: Path, results_dir: Path, openclaw_state_dir: Path | None = None) -> dict:
+    """Collect trajectory artifacts from the workspace and OpenClaw state.
 
     OpenClaw writes session data to ~/.openclaw/agents/<id>/sessions/.
-    Inside the container, this is under /root/.openclaw/.
-    We look for trajectory files in the logs directory and the output directory.
+    Inside the container, this is under /root/.openclaw/ (persisted via
+    the openclaw_state_dir mount).
+
+    We collect:
+    1. Raw OpenClaw session files (from openclaw_state_dir) → results/agent/raw/
+    2. Workspace logs (stdout, stderr) → results/agent/
+    3. Output files → results/output/
+    4. Other artifacts → results/artifacts/
     """
     workspace = Path(workspace)
     results_dir = Path(results_dir)
 
     agent_dir = results_dir / "agent"
     agent_dir.mkdir(parents=True, exist_ok=True)
+
+    raw_dir = agent_dir / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
 
     output_dir = results_dir / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -110,13 +148,41 @@ def collect_trajectory(workspace: Path, results_dir: Path) -> dict:
     collected = {
         "stdout_log": None,
         "stderr_log": None,
+        "raw_openclaw_state": None,
         "trajectory_json": None,
         "tool_events_jsonl": None,
         "output_files": [],
         "artifact_files": [],
     }
 
-    # Copy logs
+    # 1. Copy raw OpenClaw state (sessions, trajectory)
+    if openclaw_state_dir and openclaw_state_dir.is_dir():
+        raw_dst = raw_dir
+        for item in openclaw_state_dir.rglob("*"):
+            if item.is_file() and item.name != ".DS_Store":
+                rel = item.relative_to(openclaw_state_dir)
+                dst = raw_dst / rel
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(item, dst)
+        collected["raw_openclaw_state"] = str(raw_dir)
+
+        # Look for session JSONL files (OpenClaw writes to agents/<id>/sessions/)
+        for f in raw_dir.rglob("*.jsonl"):
+            if "session" in str(f).lower() or "trajectory" in str(f).lower():
+                dst = agent_dir / "trajectory.json"
+                shutil.copy2(f, dst)
+                collected["trajectory_json"] = str(dst)
+                break
+
+        # Look for any trajectory.json in raw state
+        for f in raw_dir.rglob("trajectory*.json"):
+            dst = agent_dir / f.name
+            if not dst.exists():
+                shutil.copy2(f, dst)
+                if collected["trajectory_json"] is None:
+                    collected["trajectory_json"] = str(dst)
+
+    # 2. Copy workspace logs
     logs_dir = workspace / "logs"
     if logs_dir.is_dir():
         for f in logs_dir.iterdir():
@@ -127,8 +193,9 @@ def collect_trajectory(workspace: Path, results_dir: Path) -> dict:
                 shutil.copy2(f, agent_dir / "stderr.log")
                 collected["stderr_log"] = str(agent_dir / "stderr.log")
             elif f.name == "trajectory.json":
-                shutil.copy2(f, agent_dir / "trajectory.json")
-                collected["trajectory_json"] = str(agent_dir / "trajectory.json")
+                if collected["trajectory_json"] is None:
+                    shutil.copy2(f, agent_dir / "trajectory.json")
+                    collected["trajectory_json"] = str(agent_dir / "trajectory.json")
             elif f.name == "tool_events.jsonl":
                 shutil.copy2(f, agent_dir / "tool_events.jsonl")
                 collected["tool_events_jsonl"] = str(agent_dir / "tool_events.jsonl")
@@ -136,7 +203,7 @@ def collect_trajectory(workspace: Path, results_dir: Path) -> dict:
                 shutil.copy2(f, artifacts_dir / f.name)
                 collected["artifact_files"].append(str(artifacts_dir / f.name))
 
-    # Copy output
+    # 3. Copy output
     ws_output = workspace / "output"
     if ws_output.is_dir():
         for f in ws_output.iterdir():

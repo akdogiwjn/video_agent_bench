@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Milestone 3 acceptance: verify local case files match upstream SHA256."""
+"""Milestone 3 acceptance: verify local case files match upstream SHA256.
+
+NOTE: This is a STATIC SPEC CHECK, not an E2E test.
+"""
 import hashlib
 import json
 import sys
@@ -19,7 +22,6 @@ def sha256_file(filepath):
 def main():
     all_ok = True
 
-    # --- GEN case (multi-benchmark-derived) ---
     print("=== GEN case (gen_case_001) ===")
     gen_manifest = ROOT / "cases/gen/gen_case_001/case_manifest.json"
     if not gen_manifest.is_file():
@@ -51,11 +53,9 @@ def main():
             print(f"    actual:   {actual_sha}")
             all_ok = False
 
-    # Check original prompt SHA256 matches VBench inventory
     orig_prompt = case_root / "source/original_prompt.txt"
     if orig_prompt.is_file():
         orig_sha = sha256_file(orig_prompt)
-        # Check against gen_selection.json
         sel_path = ROOT / "evidence/case_selection/gen_selection.json"
         if sel_path.is_file():
             with open(sel_path) as f:
@@ -66,7 +66,6 @@ def main():
             else:
                 print(f"  WARNING: original_prompt.txt SHA256 mismatch with inventory")
 
-    # Check adaptation.json exists
     adapt_path = case_root / "adaptation.json"
     if adapt_path.is_file():
         print(f"  OK: adaptation.json present")
@@ -74,7 +73,6 @@ def main():
         print(f"  MISSING: adaptation.json")
         all_ok = False
 
-    # --- EDIT case (official) ---
     print("\n=== EDIT case (football) ===")
     edit_manifest = ROOT / "cases/edit/case_manifest.json"
     if not edit_manifest.is_file():
@@ -84,9 +82,11 @@ def main():
     with open(edit_manifest) as f:
         manifest = json.load(f)
 
-    upstream_root = ROOT / "upstream/agentic_vbench/tasks_repurpose/football"
-    case_root = ROOT / "cases/edit"
+    print(f"  case_id: {manifest.get('case_id', 'unknown')}")
+    print(f"  case_source: {manifest.get('case_source', 'unknown')}")
+    print(f"  official_benchmark_case: {manifest.get('official_benchmark_case', 'unknown')}")
 
+    case_root = ROOT / "cases/edit"
     for rel, expected_sha in manifest.get("files", {}).items():
         local_path = case_root / rel
         if not local_path.is_file():
@@ -98,20 +98,37 @@ def main():
             print(f"  OK: {rel} ({actual_sha[:16]}...)")
         else:
             print(f"  HASH MISMATCH: {rel}")
-            print(f"    expected: {expected_sha}")
-            print(f"    actual:   {actual_sha}")
             all_ok = False
 
-    # Check materials status
-    for name, info in manifest.get("materials_status", {}).items():
-        status = info.get("status", "unknown")
-        print(f"  material {name}: {status}")
-        if status == "pending_download":
-            print(f"    -> {info.get('huggingface_url', 'unknown')}")
+    # Check source.mp4
+    materials = manifest.get("materials", {})
+    if "source.mp4" in materials:
+        mat = materials["source.mp4"]
+        source_path = case_root / "materials/source.mp4"
+        if source_path.is_file():
+            actual_sha = sha256_file(source_path)
+            expected_sha = mat.get("sha256", "")
+            if expected_sha and actual_sha == expected_sha:
+                print(f"  OK: materials/source.mp4 ({mat.get('size_bytes', 0):,} bytes, SHA256 verified)")
+                print(f"    duration: {mat.get('duration_seconds', '?')}s, format: {mat.get('format', '?')}")
+            else:
+                print(f"  HASH MISMATCH: source.mp4")
+                all_ok = False
+        else:
+            print(f"  MISSING: materials/source.mp4")
+            all_ok = False
+    else:
+        # Check old materials_status format
+        for name, info in manifest.get("materials_status", {}).items():
+            status = info.get("status", "unknown")
+            print(f"  material {name}: {status}")
+            if status == "pending_download":
+                print(f"    -> {info.get('huggingface_url', 'unknown')}")
+                all_ok = False
 
     print()
     if all_ok:
-        print("Milestone 3: ALL CHECKS PASSED")
+        print("Milestone 3: STATIC CHECKS PASSED")
     else:
         print("Milestone 3: SOME CHECKS FAILED")
         sys.exit(1)

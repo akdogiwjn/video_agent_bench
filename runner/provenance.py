@@ -79,11 +79,23 @@ def build_run_manifest(
     started_at: str,
     finished_at: str,
     agent_exit_code: int,
+    case_source: str = "unknown",
+    official_benchmark_case: bool = False,
+    instruction_sha256: str = "",
+    original_prompt_sha256: str = "",
+    adaptation_sha256: str = "",
+    verifier_sha256: str = "",
+    benchmark_sources: dict | None = None,
+    verifier_status: str = "unknown",
+    verifier_pass: bool = False,
+    verifier_reward: float = 0.0,
 ) -> dict:
-    """Build the run_manifest.json structure."""
-    return {
+    """Build the run_manifest.json structure with full provenance chain."""
+    manifest = {
         "benchmark": benchmark,
         "case_id": case_id,
+        "case_source": case_source,
+        "official_benchmark_case": official_benchmark_case,
         "benchmark_commit": benchmark_commit,
         "agent": agent,
         "agent_version": agent_version,
@@ -91,12 +103,22 @@ def build_run_manifest(
         "docker_image": docker_image,
         "docker_image_id": docker_image_id,
         "task_sha256": task_sha256,
+        "instruction_sha256": instruction_sha256 or task_sha256,
+        "original_prompt_sha256": original_prompt_sha256,
+        "adaptation_sha256": adaptation_sha256,
         "input_sha256": input_sha256,
         "skills_sha256": skills_sha256,
+        "verifier_sha256": verifier_sha256,
         "started_at": started_at,
         "finished_at": finished_at,
         "agent_exit_code": agent_exit_code,
+        "verifier_status": verifier_status,
+        "verifier_pass": verifier_pass,
+        "verifier_reward": verifier_reward,
     }
+    if benchmark_sources:
+        manifest["benchmark_sources"] = benchmark_sources
+    return manifest
 
 
 def write_run_manifest(manifest: dict, output_path: Path):

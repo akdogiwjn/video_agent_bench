@@ -2,7 +2,7 @@
   "benchmark": "VideoWeaver",
   "repository": "JianhuiWei7/VideoWeaver",
   "commit": "c809392fe6c2c8b22472049684aaefc650e31bde",
-  "frozen_at": "2026-08-26T07:41:51.418582+00:00",
+  "frozen_at": "2026-08-26T12:30:45.555001+00:00",
   "file_count": 81,
   "files": {
     "add-audio-track/SKILL.md": "48d267e19a49efe36a63e46f81d5b9c1d293dadff9f6acdc92f48771ad249dc8",

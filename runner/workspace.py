@@ -21,6 +21,64 @@ from pathlib import Path
 
 WORKSPACE_DIRS = ["task", "materials", "references", "skills", "output", "logs"]
 
+# Skills that are implicitly required by other skills.
+# Discovered by scanning VideoWeaver skill source code for cross-references
+# like: os.path.join(os.path.dirname(__file__), "../../get-output-dir/...")
+SKILL_DEPENDENCIES = {
+    "image-gen": ["get-output-dir"],
+    "video-gen": ["get-output-dir"],
+    "extract-video-frame": ["get-output-dir"],
+    "merge-video": ["get-output-dir"],
+    "trim-video": [],
+    "trim-audio": ["get-output-dir"],
+    "change-fps": ["get-output-dir"],
+    "resize-video-resolution": ["get-output-dir"],
+    "resize-image-resolution": ["get-output-dir"],
+    "grid-generate": ["get-output-dir"],
+    "add-audio-track": [],
+    "replace-audio": [],
+    "split-audio": [],
+    "split-image": [],
+    "video-shot-split": [],
+    "get-video-metadata": [],
+    "get-image-metadata": [],
+    "get-output-dir": [],
+    "task-tracker": ["get-output-dir"],
+    "vision-understanding": [],
+    "text-to-speech": [],
+    "audio-gen": [],
+    "audio-understanding": [],
+    "audio-vocal-separate": [],
+    "automatic-speech-recognition": [],
+    "process-eval": [],
+    "output-eval": [],
+    "skill-creator": [],
+    "video-skill-creator": [],
+    "skill-optimizer": [],
+    "pair-wise-skill-merge": [],
+}
+
+
+def resolve_skill_dependencies(visible_capabilities: list[str]) -> list[str]:
+    """Compute the transitive closure of skill dependencies.
+
+    Given a list of visible capabilities, expand it to include all
+    skills that those capabilities implicitly depend on (e.g.,
+    image-gen depends on get-output-dir).
+    """
+    resolved = set()
+    queue = list(visible_capabilities)
+    while queue:
+        cap = queue.pop(0)
+        if cap in resolved:
+            continue
+        resolved.add(cap)
+        deps = SKILL_DEPENDENCIES.get(cap, [])
+        for dep in deps:
+            if dep not in resolved:
+                queue.append(dep)
+    return sorted(resolved)
+
 
 def create_workspace(root: Path) -> Path:
     """Create the unified workspace directory structure under `root`."""
@@ -74,8 +132,9 @@ def populate_skills(workspace: Path, skills_root: Path, visible_capabilities: li
     """Copy foundation skills into workspace/skills/ based on visible_capabilities.
 
     For GEN cases, this mounts the VideoWeaver foundation skills that match
-    the case's visible_capabilities list. For EDIT cases, skills/ stays empty
-    (the agent uses shell/python/ffmpeg directly).
+    the case's visible_capabilities list, plus any skills those capabilities
+    implicitly depend on (e.g., get-output-dir for image-gen/video-gen).
+    For EDIT cases, skills/ stays empty (the agent uses shell/python/ffmpeg directly).
     """
     skills_dst = workspace / "skills"
     copied = []
@@ -117,7 +176,10 @@ def populate_skills(workspace: Path, skills_root: Path, visible_capabilities: li
         "audio-vocal-separate": "audio-vocal-separate",
     }
 
-    for cap in visible_capabilities:
+    # Resolve transitive dependencies (e.g., image-gen → get-output-dir)
+    resolved_caps = resolve_skill_dependencies(visible_capabilities)
+
+    for cap in resolved_caps:
         skill_name = capability_to_skill.get(cap)
         if skill_name is None:
             continue

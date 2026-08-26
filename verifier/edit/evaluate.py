@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
 """EDIT Verifier: AgenticVBench Repurpose verifier adapter.
 
-Adapts our results layout to what the AgenticVBench repurpose verifier expects,
-runs the official verifier (judge.py + aggregate.py + rubric.json), and
-standardizes the output into verification_result.json.
+Runs the official AgenticVBench verifier in an isolated Docker container
+with correct path mapping. The official test.sh uses absolute paths
+(/tests, /baked, /workspace/output, /logs) so we map our directories
+to those exact container paths via Docker volume mounts.
 
-The AgenticVBench repurpose verifier consists of:
-- test.sh: orchestrates the verifier flow
-- judge.py: VLM-based judge (Gemini + Anthropic) against per-task rubric
-- aggregate.py: aggregates per-pillar JSONs into a single 0-1 reward
-- rubric.json: per-task scoring rubric
-- config.yaml: API key configuration
+This ensures the official verifier semantics are preserved without
+modifying test.sh.
 
 Key constraints:
 - Verifier must NOT be mounted to the agent during execution
-- Verifier runs AFTER the agent stops, in an isolated process
+- Verifier runs AFTER the agent stops, in an isolated process/container
 - Verifier needs GEMINI_API_KEY and ANTHROPIC_API_KEY
 - Verifier needs source.mp4 (original) and repurpose.mp4 (agent output)
 
@@ -37,18 +34,16 @@ def setup_verifier_workspace(
     task_id: str,
     upstream_root: Path | None = None,
 ) -> Path:
-    """Set up the workspace layout that the AgenticVBench verifier expects.
+    """Set up the directory layout that the AgenticVBench verifier expects.
 
-    The verifier (test.sh) expects:
-    - /tests/rubric.json
-    - /tests/config.yaml
-    - /tests/judge.py
-    - /tests/aggregate.py
-    - /tests/test.sh
-    - /baked/source.mp4 (original source video)
-    - /workspace/output/repurpose.mp4 (agent's output)
+    The verifier (test.sh) expects these absolute container paths:
+    - /tests/rubric.json, /tests/judge.py, /tests/aggregate.py, /tests/test.sh
+    - /baked/source.mp4
+    - /workspace/output/repurpose.mp4
+    - /logs/verifier/ (output)
+    - /logs/artifacts/ (output)
 
-    We replicate this layout in a temporary directory.
+    We create a local directory structure and map it to those container paths.
     """
     if upstream_root is None:
         upstream_root = ROOT / "upstream" / "agentic_vbench" / "tasks_repurpose"
@@ -59,54 +54,67 @@ def setup_verifier_workspace(
     if not tests_dir.is_dir():
         raise FileNotFoundError(f"Verifier tests directory not found: {tests_dir}")
 
-    # Create verifier workspace
+    # Create verifier workspace with the exact structure test.sh expects
     vw_dir = results_dir / "verification" / "avb_workspace"
     if vw_dir.exists():
         shutil.rmtree(vw_dir)
-    vw_dir.mkdir(parents=True)
 
-    # Copy verifier files
+    # These directories will be mounted to /tests, /baked, /workspace, /logs in the container
     tests_dst = vw_dir / "tests"
-    tests_dst.mkdir()
+    baked_dst = vw_dir / "baked"
+    workspace_dst = vw_dir / "workspace"
+    output_dst = workspace_dst / "output"
+    logs_dst = vw_dir / "logs"
+    verifier_logs_dst = logs_dst / "verifier"
+    artifacts_logs_dst = logs_dst / "artifacts"
+
+    for d in [tests_dst, baked_dst, output_dst, verifier_logs_dst, artifacts_logs_dst]:
+        d.mkdir(parents=True, exist_ok=True)
+
+    # Copy verifier files (test.sh, judge.py, aggregate.py, rubric.json, config.yaml)
     for f in ["rubric.json", "config.yaml", "judge.py", "aggregate.py", "test.sh"]:
         src = tests_dir / f
         if src.is_file():
             shutil.copy2(src, tests_dst / f)
 
     # Copy source video (from case materials)
-    baked_dir = vw_dir / "baked"
-    baked_dir.mkdir()
-    case_materials = ROOT / "cases" / "edit" / "materials" / "source.mp4"
-    if case_materials.is_file():
-        shutil.copy2(case_materials, baked_dir / "source.mp4")
+    case_source = ROOT / "cases" / "edit" / "materials" / "source.mp4"
+    if case_source.is_file():
+        shutil.copy2(case_source, baked_dst / "source.mp4")
 
     # Copy brief.md if it exists
     brief_src = task_dir / "environment" / "brief.md"
     if brief_src.is_file():
-        shutil.copy2(brief_src, baked_dir / "brief.md")
+        shutil.copy2(brief_src, baked_dst / "brief.md")
 
-    # Create workspace/output with agent's output
-    ws_output = vw_dir / "workspace" / "output"
-    ws_output.mkdir(parents=True)
+    # Copy agent's output
     agent_output = results_dir / "output" / "repurpose.mp4"
     if agent_output.is_file():
-        shutil.copy2(agent_output, ws_output / "repurpose.mp4")
-
-    # Create logs directories
-    (vw_dir / "logs" / "verifier").mkdir(parents=True)
-    (vw_dir / "logs" / "artifacts").mkdir(parents=True)
+        shutil.copy2(agent_output, output_dst / "repurpose.mp4")
 
     return vw_dir
 
 
-def run_verifier(vw_dir: Path, env_vars: dict[str, str] | None = None) -> dict:
-    """Run the AgenticVBench verifier (test.sh).
+def run_verifier_in_docker(
+    vw_dir: Path,
+    image: str,
+    env_vars: dict[str, str] | None = None,
+) -> dict:
+    """Run the AgenticVBench verifier in an isolated Docker container.
 
-    Returns the parsed reward.json if available, or an error result.
+    Maps local directories to the absolute paths that test.sh expects:
+      vw_dir/tests    → /tests
+      vw_dir/baked    → /baked
+      vw_dir/workspace → /workspace
+      vw_dir/logs     → /logs
+
+    This preserves the official test.sh semantics without modification.
     """
     test_sh = vw_dir / "tests" / "test.sh"
     if not test_sh.is_file():
         return {"status": "error", "reason": "test.sh not found", "reward": 0.0}
+
+    vw_dir = Path(vw_dir).resolve()
 
     env = os.environ.copy()
     if env_vars:
@@ -115,21 +123,34 @@ def run_verifier(vw_dir: Path, env_vars: dict[str, str] | None = None) -> dict:
     # Set CUTBENCH_REPURPOSE_ONLY=1 as test.sh expects
     env["CUTBENCH_REPURPOSE_ONLY"] = "1"
 
+    # Build docker run command with correct volume mappings
+    cmd = [
+        "docker", "run", "--rm",
+        "--name", f"avb-verifier-{int(__import__('time').time())}",
+        "-v", f"{vw_dir / 'tests'}:/tests:ro",
+        "-v", f"{vw_dir / 'baked'}:/baked:ro",
+        "-v", f"{vw_dir / 'workspace'}:/workspace:rw",
+        "-v", f"{vw_dir / 'logs'}:/logs:rw",
+        "-e", "CUTBENCH_REPURPOSE_ONLY=1",
+        "-e", f"GEMINI_API_KEY={env.get('GEMINI_API_KEY', '')}",
+        "-e", f"ANTHROPIC_API_KEY={env.get('ANTHROPIC_API_KEY', '')}",
+        image,
+        "bash", "/tests/test.sh",
+    ]
+
     try:
         result = subprocess.run(
-            ["bash", str(test_sh)],
+            cmd,
             capture_output=True,
             text=True,
             timeout=1800,
-            env=env,
-            cwd=str(vw_dir),
         )
     except subprocess.TimeoutExpired:
         return {"status": "timeout", "reason": "Verifier timed out after 1800s", "reward": 0.0}
     except Exception as e:
         return {"status": "error", "reason": str(e), "reward": 0.0}
 
-    # Parse reward.json
+    # Parse reward.json from the mounted logs directory
     reward_path = vw_dir / "logs" / "verifier" / "reward.json"
     if reward_path.is_file():
         try:
@@ -156,7 +177,7 @@ def run_verifier(vw_dir: Path, env_vars: dict[str, str] | None = None) -> dict:
         }
 
 
-def evaluate(results_dir: Path, task_id: str, upstream_root: Path | None = None) -> dict:
+def evaluate(results_dir: Path, task_id: str, upstream_root: Path | None = None, image: str | None = None) -> dict:
     """Run the EDIT verifier and return standardized results."""
     result = {
         "benchmark": "AgenticVBench",
@@ -210,8 +231,9 @@ def evaluate(results_dir: Path, task_id: str, upstream_root: Path | None = None)
         result["details"]["reason"] = str(e)
         return result
 
-    # Run verifier
-    verifier_result = run_verifier(vw_dir)
+    # Run verifier in isolated Docker container with correct path mapping
+    verifier_image = image or os.environ.get("VIDEO_AGENT_BENCH_IMAGE", "video-agent-bench:1.0")
+    verifier_result = run_verifier_in_docker(vw_dir, verifier_image)
     result["status"] = verifier_result["status"]
     result["reward"] = verifier_result.get("reward", 0.0)
     result["details"] = {k: v for k, v in verifier_result.items() if k not in ("stdout", "stderr")}
@@ -225,12 +247,13 @@ def main():
     parser.add_argument("--results", required=True, help="Path to results/<run-id>/ directory")
     parser.add_argument("--task-id", default="football", help="Task ID (default: football)")
     parser.add_argument("--upstream", default=None, help="Path to AgenticVBench tasks_repurpose root")
+    parser.add_argument("--image", default=None, help="Docker image for verifier container")
     args = parser.parse_args()
 
     results_dir = Path(args.results).resolve()
     upstream_root = Path(args.upstream) if args.upstream else None
 
-    result = evaluate(results_dir, args.task_id, upstream_root)
+    result = evaluate(results_dir, args.task_id, upstream_root, args.image)
 
     output_path = results_dir / "verification" / "verification_result.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)
