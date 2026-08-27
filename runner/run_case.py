@@ -507,18 +507,17 @@ def run_case(args):
     print(f"\n[11b/12] Running verifier pipeline (V0→V1→V2, isolated, post-agent)...")
     if args.dry_run:
         print("  (dry run — skipping verifier)")
-        verifier_result = {"pass": False, "status": "skipped_dry_run",
-                           "v0_provenance": {"pass": False}, "v1_execution": {"pass": False},
-                           "v2_benchmark": {"pass": False, "reward": 0.0}}
+        verifier_result = {"benchmark": case_type, "pass": False, "status": "skipped_dry_run",
+                           "reward": 0.0, "details": {}}
     else:
         verifier_result = run_verifier_pipeline(case_type, results_dir, case_dir, image)
-        print(f"  overall: {'PASS' if verifier_result.get('overall_pass') else 'FAIL'}")
+        print(f"  overall: {'PASS' if verifier_result.get('pass') else 'FAIL'}")
 
     # 12. Write FINAL run_manifest.json with verifier results
     print(f"\n[12/12] Writing final run_manifest.json (with verifier results)...")
-    run_manifest["verifier_status"] = verifier_result.get("overall_status", "unknown")
-    run_manifest["verifier_pass"] = verifier_result.get("overall_pass", False)
-    run_manifest["verifier_reward"] = verifier_result.get("v2_benchmark", {}).get("reward", 0.0)
+    run_manifest["verifier_status"] = verifier_result.get("status", "unknown")
+    run_manifest["verifier_pass"] = verifier_result.get("pass", False)
+    run_manifest["verifier_reward"] = verifier_result.get("reward", 0.0)
     write_run_manifest(run_manifest, results_dir / "run_manifest.json")
 
 

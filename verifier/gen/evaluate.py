@@ -480,7 +480,7 @@ def evaluate(results_dir: Path, case_dir: Path | None = None) -> dict:
         "rubric_source": "project-defined",
         "rubric_basis": ["VBench", "VideoWeaver"],
         "official_videoweaver_rubric": False,
-        "verifier_commit": None,
+        "verifier_commit": "",
         "pass": False,
         "reward": 0.0,
         "details": {},

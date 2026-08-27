@@ -9,7 +9,7 @@
   "files": {
     "adaptation.json": "c297fae196a367933aa4fe05935d79a1e81894629aebf2f0cac250f7a0e47679",
     "benchmark_source.json": "990cdb722f828d2727dbe2d26c776a539d2a38ef003e78783ec7adfc8680a03d",
-    "rubric/rubric_deterministic.json": "76688d6d7ffbbb30919a2469af4ce863c27f1dfa1ea517efd67b45517993efec",
+    "rubric/rubric_deterministic.json": "fdc7074289dc260a40a3d9d8ad89effe7a929f5eeedcc06876bd7060a3b1e976",
     "source/original_prompt.txt": "140e2594cce0d2b8ba8368ea327d28b571dadeb4dbfda24dea611389a2720840",
     "task/instruction.txt": "c7e6c141487f77d92435bc9b1eee8d985000bb988dbc0c883e98fc818c17dd5e"
   },

@@ -56,7 +56,7 @@ cat > "$OPENCLAW_HOME/openclaw.json" <<'OCJSON'
   },
   "agents": {
     "defaults": {
-      "timeoutSeconds": 36000,
+      "timeoutSeconds": 3600,
       "verboseDefault": "full",
       "maxConcurrent": 100,
       "subagents": {

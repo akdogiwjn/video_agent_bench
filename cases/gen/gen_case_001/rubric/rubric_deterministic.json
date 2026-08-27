@@ -43,7 +43,7 @@
       "pillar": "content",
       "weight": 1,
       "criterion": "Video content matches the original VBench prompt (semantic prompt adherence)",
-      "check": "VLM-based prompt adherence check if API key available; falls back to prompt-specific color analysis (e.g. sunset scenes must have warm colors). NEVER skipped — a SMPTE test pattern or unrelated video will FAIL.",
+      "check": "VLM-based prompt adherence check. If VLM API key is available, the VLM evaluates whether video frames match the original VBench prompt. If VLM is unavailable, semantic check returns NOT_EVALUATED (FAIL). Color analysis is used as diagnostic only, never as a PASS gate. A SMPTE test pattern or unrelated video will FAIL.",
       "judge": "deterministic"
     },
     {

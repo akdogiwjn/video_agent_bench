@@ -29,12 +29,16 @@ def sha256_file(filepath: str | Path) -> str:
 
 
 def download(url: str, dest: Path) -> bool:
-    """Download a file using curl."""
+    """Download a file using curl with retry and resume support."""
     dest.parent.mkdir(parents=True, exist_ok=True)
     try:
         result = subprocess.run(
-            ["curl", "-sL", "--max-time", "600", "-o", str(dest), url],
-            timeout=700,
+            ["curl", "--fail", "--location",
+             "--retry", "5", "--retry-delay", "3",
+             "--continue-at", "-",
+             "--max-time", "3600",
+             "-o", str(dest), url],
+            timeout=3700,
         )
         return result.returncode == 0 and dest.is_file() and dest.stat().st_size > 0
     except Exception as e:
