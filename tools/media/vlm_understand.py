@@ -52,19 +52,41 @@ def call_vlm(image_path: str | None, video_path: str | None, prompt: str, model:
             "image_url": {"url": f"data:image/{ext};base64,{img_b64}"}
         })
     elif video_path:
-        # For video, extract first frame and send as image
+        # For video, extract multiple evenly-spaced frames and send to VLM
         import subprocess
         import tempfile
-        tmp = tempfile.mktemp(suffix=".png")
-        subprocess.run(["ffmpeg", "-y", "-i", video_path, "-frames:v", "1", "-q:v", "2", tmp],
-                      capture_output=True, timeout=30)
-        with open(tmp, "rb") as f:
-            img_b64 = base64.b64encode(f.read()).decode()
-        os.unlink(tmp)
-        content.append({
-            "type": "image_url",
-            "image_url": {"url": f"data:image/png;base64,{img_b64}"}
-        })
+        import json as _json
+
+        # Get video duration
+        probe = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", video_path],
+            capture_output=True, text=True, timeout=30,
+        )
+        duration = 0.0
+        if probe.returncode == 0:
+            try:
+                duration = float(_json.loads(probe.stdout).get("format", {}).get("duration", 0))
+            except Exception:
+                pass
+
+        num_samples = int(os.environ.get("VLM_VIDEO_SAMPLES", "6"))
+        frames_sent = 0
+        for i in range(num_samples):
+            t = (duration / (num_samples + 1)) * (i + 1) if duration > 0 else 0
+            tmp = tempfile.mktemp(suffix=".png")
+            subprocess.run(
+                ["ffmpeg", "-y", "-ss", str(t), "-i", video_path, "-frames:v", "1", "-q:v", "2", tmp],
+                capture_output=True, timeout=30,
+            )
+            if os.path.exists(tmp):
+                with open(tmp, "rb") as f:
+                    img_b64 = base64.b64encode(f.read()).decode()
+                content.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{img_b64}"}
+                })
+                os.unlink(tmp)
+                frames_sent += 1
 
     response = client.chat.completions.create(
         model=vlm_model,

@@ -93,9 +93,12 @@ def run_openclaw_in_docker(
         env.update(env_vars)
 
     # Build docker run command
-    container_name = f"video-agent-bench-{int(time.time())}"
+    # --rm ensures container is removed after exit (no leftover API keys)
+    # UUID in name avoids collision on concurrent runs
+    import uuid as _uuid
+    container_name = f"video-agent-bench-{_uuid.uuid4().hex[:8]}"
     cmd = [
-        "docker", "run",
+        "docker", "run", "--rm",
         "--name", container_name,
     ]
     for k, v in env.items():
@@ -105,12 +108,24 @@ def run_openclaw_in_docker(
     cmd.extend([image, task_file])
 
     started = time.time()
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        timeout=timeout + 300,  # extra 5 min for container overhead
-    )
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout + 300,  # extra 5 min for container overhead
+        )
+    except subprocess.TimeoutExpired:
+        # Container may still be running — force remove it
+        subprocess.run(["docker", "rm", "-f", container_name],
+                       capture_output=True, timeout=30)
+        return {
+            "exit_code": -1,
+            "stdout": "",
+            "stderr": f"Agent timed out after {timeout}s",
+            "duration_seconds": time.time() - started,
+            "container_name": container_name,
+        }
     duration = time.time() - started
 
     return {

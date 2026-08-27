@@ -138,11 +138,15 @@ def run_verifier_pipeline(case_type: str, results_dir: Path, case_dir: Path, ima
     verif_dir.mkdir(parents=True, exist_ok=True)
 
     pipeline_result = {
-        "v0_provenance": {},
-        "v1_execution": {},
-        "v2_benchmark": {},
-        "overall_pass": False,
-        "overall_status": "unknown",
+        "benchmark": case_type,
+        "pass": False,
+        "reward": 0.0,
+        "status": "unknown",
+        "details": {
+            "v0_provenance": {},
+            "v1_execution": {},
+            "v2_benchmark": {},
+        },
     }
 
     # V0: Provenance
@@ -162,13 +166,13 @@ def run_verifier_pipeline(case_type: str, results_dir: Path, case_dir: Path, ima
             }
             with open(v0_result_path, "w") as f:
                 json.dump(v0_data, f, indent=2)
-            pipeline_result["v0_provenance"] = v0_data
+            pipeline_result["details"]["v0_provenance"] = v0_data
             print(f"    {'PASS' if v0_data['pass'] else 'FAIL'}: provenance")
         except Exception as e:
-            pipeline_result["v0_provenance"] = {"pass": False, "error": str(e)}
+            pipeline_result["details"]["v0_provenance"] = {"pass": False, "error": str(e)}
             print(f"    ERROR: provenance — {e}")
     else:
-        pipeline_result["v0_provenance"] = {"pass": False, "error": "script not found"}
+        pipeline_result["details"]["v0_provenance"] = {"pass": False, "error": "script not found"}
         print(f"    SKIP: provenance script not found")
 
     # V1: Execution integrity
@@ -189,13 +193,13 @@ def run_verifier_pipeline(case_type: str, results_dir: Path, case_dir: Path, ima
             }
             with open(v1_result_path, "w") as f:
                 json.dump(v1_data, f, indent=2)
-            pipeline_result["v1_execution"] = v1_data
+            pipeline_result["details"]["v1_execution"] = v1_data
             print(f"    {'PASS' if v1_data['pass'] else 'FAIL'}: execution integrity")
         except Exception as e:
-            pipeline_result["v1_execution"] = {"pass": False, "error": str(e)}
+            pipeline_result["details"]["v1_execution"] = {"pass": False, "error": str(e)}
             print(f"    ERROR: execution — {e}")
     else:
-        pipeline_result["v1_execution"] = {"pass": False, "error": "script not found"}
+        pipeline_result["details"]["v1_execution"] = {"pass": False, "error": "script not found"}
 
     # V2: Benchmark verifier
     print("  [V2] Benchmark verifier...")
@@ -204,7 +208,7 @@ def run_verifier_pipeline(case_type: str, results_dir: Path, case_dir: Path, ima
     with open(v2_result_path, "w") as f:
         json.dump(v2_result, f, indent=2, ensure_ascii=False)
         f.write("\n")
-    pipeline_result["v2_benchmark"] = {
+    pipeline_result["details"]["v2_benchmark"] = {
         "pass": v2_result.get("pass", False),
         "status": v2_result.get("status", "unknown"),
         "reward": v2_result.get("reward", 0.0),
@@ -212,11 +216,12 @@ def run_verifier_pipeline(case_type: str, results_dir: Path, case_dir: Path, ima
     print(f"    {'PASS' if v2_result.get('pass') else 'FAIL'}: benchmark (status={v2_result.get('status')}, reward={v2_result.get('reward', 0):.2f})")
 
     # Overall pass = V0 AND V1 AND V2
-    v0_pass = pipeline_result["v0_provenance"].get("pass", False)
-    v1_pass = pipeline_result["v1_execution"].get("pass", False)
-    v2_pass = pipeline_result["v2_benchmark"].get("pass", False)
-    pipeline_result["overall_pass"] = v0_pass and v1_pass and v2_pass
-    pipeline_result["overall_status"] = "pass" if pipeline_result["overall_pass"] else "fail"
+    v0_pass = pipeline_result["details"]["v0_provenance"].get("pass", False)
+    v1_pass = pipeline_result["details"]["v1_execution"].get("pass", False)
+    v2_pass = pipeline_result["details"]["v2_benchmark"].get("pass", False)
+    pipeline_result["pass"] = v0_pass and v1_pass and v2_pass
+    pipeline_result["status"] = "pass" if pipeline_result["pass"] else "fail"
+    pipeline_result["reward"] = pipeline_result["details"]["v2_benchmark"].get("reward", 0.0)
 
     # Write aggregated result
     final_path = verif_dir / "verification_result.json"
@@ -243,7 +248,7 @@ def run_benchmark_verifier(case_type: str, results_dir: Path, case_dir: Path, im
             with open(manifest_path) as f:
                 m = json.load(f)
             task_id = m.get("case_id", "football")
-            cmd.extend(["--task-id", task_id])
+            cmd.extend(["--task-id", task_id, "--image", image])
 
     try:
         result = subprocess.run(
@@ -440,118 +445,82 @@ def run_case(args):
         if normalize_trajectory(Path(collected["trajectory_json"]), norm_path):
             print(f"  normalized trajectory: {norm_path}")
 
-    # 11. Run verifier pipeline: V0 → V1 → V2 (closed loop!)
-    print(f"\n[11/12] Running verifier pipeline (V0→V1→V2, isolated, post-agent)...")
-    if args.dry_run:
-        print("  (dry run — skipping verifier)")
-        verifier_result = {"overall_pass": False, "overall_status": "skipped_dry_run",
-                           "v0_provenance": {}, "v1_execution": {}, "v2_benchmark": {}}
-    else:
-        verifier_result = run_verifier_pipeline(case_type, results_dir, case_dir, image)
-        print(f"  overall: {'PASS' if verifier_result.get('overall_pass') else 'FAIL'}")
-
-    # 12. Write run_manifest.json (with full provenance chain)
-    print(f"\n[12/12] Writing run_manifest.json...")
-
-    # Determine benchmark name for manifest
+    # --- Compute all provenance fields for preliminary manifest ---
     benchmark_name = manifest.get("benchmark", manifest.get("task_content_source", "unknown"))
     if manifest.get("case_source") == "multi-benchmark-derived":
         benchmark_name = manifest.get("task_content_source", "multi-benchmark-derived")
-
-    # Get upstream commit + benchmark_sources
     upstream_commit = manifest.get("upstream_commit", "unknown")
     benchmark_sources = {}
-
     bs_path = case_dir / "benchmark_source.json"
     if bs_path.is_file():
         with open(bs_path) as f:
             bs = json.load(f)
-
-        # For EDIT (official case): single benchmark source
         if bs.get("case_source") == "official" or bs.get("official_benchmark_case"):
             benchmark_name = bs.get("benchmark", benchmark_name)
             upstream_commit = bs.get("upstream_commit", upstream_commit)
-            benchmark_sources["primary"] = {
-                "benchmark": bs.get("benchmark", benchmark_name),
-                "commit": bs.get("upstream_commit", upstream_commit),
-                "case_source": "official",
-            }
+            benchmark_sources["primary"] = {"benchmark": bs.get("benchmark", benchmark_name), "commit": bs.get("upstream_commit", upstream_commit), "case_source": "official"}
         else:
-            # For GEN (multi-benchmark-derived): multiple sources
             tcs = bs.get("task_content_source", {})
             if isinstance(tcs, dict) and tcs.get("benchmark"):
-                benchmark_sources["task_content"] = {
-                    "benchmark": tcs.get("benchmark", ""),
-                    "commit": tcs.get("commit", ""),
-                }
-                if upstream_commit == "unknown":
-                    upstream_commit = tcs.get("commit", "unknown")
+                benchmark_sources["task_content"] = {"benchmark": tcs.get("benchmark", ""), "commit": tcs.get("commit", "")}
+                if upstream_commit == "unknown": upstream_commit = tcs.get("commit", "unknown")
             agb = bs.get("agentic_execution_basis", {})
             if isinstance(agb, dict) and agb.get("benchmark"):
-                benchmark_sources["agentic_basis"] = {
-                    "benchmark": agb.get("benchmark", ""),
-                    "commit": agb.get("commit", ""),
-                }
-                if upstream_commit == "unknown":
-                    upstream_commit = agb.get("commit", "unknown")
-
+                benchmark_sources["agentic_basis"] = {"benchmark": agb.get("benchmark", ""), "commit": agb.get("commit", "")}
+                if upstream_commit == "unknown": upstream_commit = agb.get("commit", "unknown")
     if not benchmark_sources:
-        benchmark_sources["primary"] = {
-            "benchmark": benchmark_name,
-            "commit": upstream_commit,
-        }
-
-    # Compute verifier SHA256 from all verifier files
-    verifier_sha = ""
-    verifier_script = ROOT / "verifier" / case_type / "evaluate.py"
-    if verifier_script.is_file():
-        verifier_sha = sha256_file(verifier_script)
-    rubric_path = case_dir / "rubric" / "rubric_deterministic.json"
-    if rubric_path.is_file():
-        rubric_sha = sha256_file(rubric_path)
-        if verifier_sha:
-            verifier_sha = verifier_sha + rubric_sha  # combined hash
-        else:
-            verifier_sha = rubric_sha
-    # For EDIT: also hash the upstream verifier files
+        benchmark_sources["primary"] = {"benchmark": benchmark_name, "commit": upstream_commit}
+    import hashlib as _hl
+    verifier_hasher = _hl.sha256()
+    for vf in [ROOT / "verifier" / case_type / "evaluate.py", case_dir / "rubric" / "rubric_deterministic.json"]:
+        if vf.is_file():
+            verifier_hasher.update(str(vf.relative_to(ROOT)).encode()); verifier_hasher.update(b"\0")
+            verifier_hasher.update(vf.read_bytes()); verifier_hasher.update(b"\0")
     if case_type == "edit":
-        edit_manifest = case_dir / "case_manifest.json"
-        if edit_manifest.is_file():
-            with open(edit_manifest) as f:
-                em = json.load(f)
-            # Hash the upstream verifier bundle
-            for fname in ["rubric.json", "judge.py", "aggregate.py", "test.sh"]:
-                vfile = ROOT / "upstream" / "agentic_vbench" / "tasks_repurpose" / manifest.get("case_id", "football") / "steps" / "solve" / "tests" / fname
-                if vfile.is_file():
-                    verifier_sha += sha256_file(vfile)[:16]  # append short hashes
+        task_id = manifest.get("case_id", "football")
+        for fname in ["rubric.json", "judge.py", "aggregate.py", "test.sh", "config.yaml"]:
+            vf = ROOT / "upstream" / "agentic_vbench" / "tasks_repurpose" / task_id / "steps" / "solve" / "tests" / fname
+            if vf.is_file():
+                verifier_hasher.update(str(vf.relative_to(ROOT)).encode()); verifier_hasher.update(b"\0")
+                verifier_hasher.update(vf.read_bytes()); verifier_hasher.update(b"\0")
+    verifier_sha = verifier_hasher.hexdigest()
 
+    # --- Write PRELIMINARY run_manifest.json BEFORE V0/V1/V2 ---
+    print(f"\n[11a/12] Writing preliminary run_manifest.json (before V0/V1)...")
     run_manifest = {
-        "benchmark": benchmark_name,
-        "case_id": manifest.get("case_id", "unknown"),
+        "benchmark": benchmark_name, "case_id": manifest.get("case_id", "unknown"),
         "case_source": manifest.get("case_source", "unknown"),
         "official_benchmark_case": manifest.get("official_benchmark_case", False),
-        "benchmark_commit": upstream_commit,
-        "benchmark_sources": benchmark_sources,
-        "agent": "OpenClaw",
-        "agent_version": agent_version,
-        "agent_model": args.model,
-        "docker_image": image,
-        "docker_image_id": image_id,
-        "task_sha256": task_sha,
-        "instruction_sha256": task_sha,
-        "original_prompt_sha256": original_prompt_sha,
-        "adaptation_sha256": adaptation_sha,
-        "input_sha256": input_sha,
-        "skills_sha256": skills_sha,
-        "verifier_sha256": verifier_sha,
-        "started_at": started_at,
-        "finished_at": finished_at,
+        "benchmark_commit": upstream_commit, "benchmark_sources": benchmark_sources,
+        "agent": "OpenClaw", "agent_version": agent_version, "agent_model": args.model,
+        "docker_image": image, "docker_image_id": image_id,
+        "task_sha256": task_sha, "instruction_sha256": task_sha,
+        "original_prompt_sha256": original_prompt_sha, "adaptation_sha256": adaptation_sha,
+        "input_sha256": input_sha, "skills_sha256": skills_sha, "verifier_sha256": verifier_sha,
+        "started_at": started_at, "finished_at": finished_at,
         "agent_exit_code": result["exit_code"],
-        "verifier_status": verifier_result.get("overall_status", "unknown"),
-        "verifier_pass": verifier_result.get("overall_pass", False),
-        "verifier_reward": verifier_result.get("v2_benchmark", {}).get("reward", 0.0),
+        "verifier_status": "pending", "verifier_pass": False, "verifier_reward": 0.0,
     }
     write_run_manifest(run_manifest, results_dir / "run_manifest.json")
+
+    # 11b. Run verifier pipeline: V0 → V1 → V2
+    print(f"\n[11b/12] Running verifier pipeline (V0→V1→V2, isolated, post-agent)...")
+    if args.dry_run:
+        print("  (dry run — skipping verifier)")
+        verifier_result = {"pass": False, "status": "skipped_dry_run",
+                           "v0_provenance": {"pass": False}, "v1_execution": {"pass": False},
+                           "v2_benchmark": {"pass": False, "reward": 0.0}}
+    else:
+        verifier_result = run_verifier_pipeline(case_type, results_dir, case_dir, image)
+        print(f"  overall: {'PASS' if verifier_result.get('overall_pass') else 'FAIL'}")
+
+    # 12. Write FINAL run_manifest.json with verifier results
+    print(f"\n[12/12] Writing final run_manifest.json (with verifier results)...")
+    run_manifest["verifier_status"] = verifier_result.get("overall_status", "unknown")
+    run_manifest["verifier_pass"] = verifier_result.get("overall_pass", False)
+    run_manifest["verifier_reward"] = verifier_result.get("v2_benchmark", {}).get("reward", 0.0)
+    write_run_manifest(run_manifest, results_dir / "run_manifest.json")
+
 
     print(f"\n=== Run complete ===")
     print(f"  results: {results_dir}")
@@ -561,8 +530,9 @@ def run_case(args):
     if not args.dry_run:
         if result["exit_code"] != 0:
             return result["exit_code"]
-        if not verifier_result.get("overall_pass", False):
-            print(f"  FAIL: verifier pipeline did not pass (status={verifier_result.get('overall_status')})")
+        if not verifier_result.get("pass", False):
+            v_status = verifier_result.get("status", "unknown")
+            print(f"  FAIL: verifier pipeline did not pass (status={v_status})")
             if not args.allow_verifier_fail:
                 return 1
 

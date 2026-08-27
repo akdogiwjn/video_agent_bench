@@ -46,7 +46,7 @@ def summarize(probe_data: dict) -> dict:
             "codec": video_stream.get("codec_name", ""),
             "width": video_stream.get("width", 0),
             "height": video_stream.get("height", 0),
-            "fps": eval(video_stream.get("r_frame_rate", "0/1")) if "/" in video_stream.get("r_frame_rate", "0") else 0,
+            "fps": float(video_stream.get("r_frame_rate", "0").split("/")[0]) / float(video_stream.get("r_frame_rate", "0").split("/")[1]) if "/" in video_stream.get("r_frame_rate", "0") else 0.0 if "/" in video_stream.get("r_frame_rate", "0") else 0,
             "bit_rate": int(video_stream.get("bit_rate", 0)),
         }
 

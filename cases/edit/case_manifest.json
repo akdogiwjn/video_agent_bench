@@ -20,7 +20,7 @@
       "resolution": "1280x720",
       "fps": "60000/1001",
       "audio": "aac, 2ch, 44100Hz",
-      "source": "HuggingFace: ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/football.mp4",
+      "url": "https://huggingface.co/datasets/ameddserM/agentic_vbench_video_repurpose/resolve/main/materials/football.mp4",
       "status": "frozen"
     }
   },

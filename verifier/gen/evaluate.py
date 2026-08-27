@@ -241,18 +241,33 @@ def color_analysis_check(frame_paths: list[str], prompt: str) -> dict:
 def check_semantic_content(video_path: Path, prompt: str) -> dict:
     """Check if video content matches the prompt.
 
-    Tries VLM first (if API key available), falls back to color analysis.
-    Never skips — a SMPTE test pattern will FAIL.
+    Uses VLM-based prompt adherence. If VLM is unavailable, returns FAIL
+    (NOT_EVALUATED). Color analysis is used only as a diagnostic signal
+    in the detail, never as a PASS gate.
+
+    This ensures that unrelated synthetic videos (e.g. SMPTE test patterns)
+    cannot PASS the semantic gate without a real VLM confirming prompt
+    adherence.
     """
     frames = extract_frames(video_path, num_frames=10)
 
     # Try VLM first
     vlm_result = vlm_check_prompt_adherence(frames, prompt)
-    if vlm_result["method"].startswith("vlm") and vlm_result["method"] != "vlm_unavailable":
+
+    if vlm_result["method"] == "vlm":
+        # VLM gave a definitive answer — use it as the semantic gate
         return vlm_result
 
-    # Fall back to color analysis
-    return color_analysis_check(frames, prompt)
+    # VLM unavailable or errored — semantic gate FAILS
+    # Color analysis is included as diagnostic only, NOT as a pass gate
+    color_diag = color_analysis_check(frames, prompt)
+    return {
+        "pass": False,
+        "detail": f"VLM unavailable — semantic check NOT_EVALUATED (FAIL). "
+                  f"Color diagnostic: {color_diag['detail']}",
+        "method": "vlm_unavailable_fail",
+        "color_diagnostic": color_diag,
+    }
 
 
 def count_intermediate_artifacts(results_dir: Path, expected_output: str = "final.mp4") -> list[str]:

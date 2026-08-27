@@ -103,7 +103,7 @@ def fetch_case_materials(case_type: str, force: bool = False) -> bool:
         expected_path = info.get("path", info.get("expected_path", f"materials/{name}"))
         dest = case_dir / expected_path
         expected_sha = info.get("sha256", "")
-        url = info.get("source", info.get("huggingface_url", ""))
+        url = info.get("url", info.get("source", info.get("huggingface_url", "")))
         status = info.get("status", "unknown")
 
         print(f"\n  Material: {name}")
