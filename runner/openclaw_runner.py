@@ -84,10 +84,14 @@ def run_openclaw_in_docker(
     volumes[str(openclaw_state_dir)] = {"bind": "/root/.openclaw", "mode": "rw"}
 
     # Environment variables
+    import uuid as _uuid
+    session_key = f"bench-{_uuid.uuid4().hex[:8]}"
     env = {
         "AGENT_MODEL": agent_model,
         "TIMEOUT": str(timeout),
         "OUTPUT_DIR": "/workspace/output",
+        "SESSION_KEY": session_key,
+        "OPENCLAW_WORKSPACE_DIR": "/workspace",
     }
     if env_vars:
         env.update(env_vars)
@@ -140,15 +144,16 @@ def run_openclaw_in_docker(
 def collect_trajectory(workspace: Path, results_dir: Path, openclaw_state_dir: Path | None = None) -> dict:
     """Collect trajectory artifacts from the workspace and OpenClaw state.
 
-    OpenClaw writes session data to ~/.openclaw/agents/<id>/sessions/.
-    Inside the container, this is under /root/.openclaw/ (persisted via
-    the openclaw_state_dir mount).
+    OpenClaw (current version) stores session data in SQLite:
+        ~/.openclaw/agents/<id>/agent/openclaw-agent.sqlite
 
-    We collect:
-    1. Raw OpenClaw session files (from openclaw_state_dir) → results/agent/raw/
-    2. Workspace logs (stdout, stderr) → results/agent/
-    3. Output files → results/output/
-    4. Other artifacts → results/artifacts/
+    The entrypoint.sh uses `openclaw sessions export-trajectory` to export
+    the canonical trajectory to /workspace/logs/. We collect:
+    1. Exported trajectory files (from workspace/logs/) → results/agent/
+    2. Raw OpenClaw state including SQLite (from openclaw_state_dir) → results/agent/raw/
+    3. Workspace logs (stdout, stderr, export log) → results/agent/
+    4. Output files → results/output/
+    5. Other artifacts → results/artifacts/
     """
     workspace = Path(workspace)
     results_dir = Path(results_dir)
@@ -175,7 +180,7 @@ def collect_trajectory(workspace: Path, results_dir: Path, openclaw_state_dir: P
         "artifact_files": [],
     }
 
-    # 1. Copy raw OpenClaw state (sessions, trajectory)
+    # 1. Copy raw OpenClaw state (SQLite DB, trajectory-exports, etc.)
     if openclaw_state_dir and openclaw_state_dir.is_dir():
         raw_dst = raw_dir
         for item in openclaw_state_dir.rglob("*"):
@@ -186,23 +191,48 @@ def collect_trajectory(workspace: Path, results_dir: Path, openclaw_state_dir: P
                 shutil.copy2(item, dst)
         collected["raw_openclaw_state"] = str(raw_dir)
 
-        # Look for session JSONL files (OpenClaw writes to agents/<id>/sessions/)
-        for f in raw_dir.rglob("*.jsonl"):
-            if "session" in str(f).lower() or "trajectory" in str(f).lower():
+        # Look for trajectory export files in trajectory-exports/
+        exports_dir = raw_dir / "trajectory-exports"
+        if exports_dir.is_dir():
+            for f in sorted(exports_dir.rglob("*.json")):
                 dst = agent_dir / "trajectory.json"
-                shutil.copy2(f, dst)
-                collected["trajectory_json"] = str(dst)
-                break
+                if not dst.exists():
+                    shutil.copy2(f, dst)
+                    collected["trajectory_json"] = str(dst)
+                    break
+            for f in sorted(exports_dir.rglob("*.jsonl")):
+                dst = agent_dir / "tool_events.jsonl"
+                if not dst.exists():
+                    shutil.copy2(f, dst)
+                    collected["tool_events_jsonl"] = str(dst)
+                    break
 
-        # Look for any trajectory.json in raw state
-        for f in raw_dir.rglob("trajectory*.json"):
+        # Fallback: look for legacy session JSONL files
+        if collected["trajectory_json"] is None:
+            for f in raw_dir.rglob("*.jsonl"):
+                if "session" in str(f).lower() or "trajectory" in str(f).lower():
+                    dst = agent_dir / "trajectory.json"
+                    shutil.copy2(f, dst)
+                    collected["trajectory_json"] = str(dst)
+                    break
+
+        # Fallback: look for any trajectory*.json in raw state
+        if collected["trajectory_json"] is None:
+            for f in raw_dir.rglob("trajectory*.json"):
+                dst = agent_dir / f.name
+                if not dst.exists():
+                    shutil.copy2(f, dst)
+                    if collected["trajectory_json"] is None:
+                        collected["trajectory_json"] = str(dst)
+
+        # Copy SQLite database for raw state preservation
+        for f in raw_dir.rglob("*.sqlite"):
             dst = agent_dir / f.name
             if not dst.exists():
                 shutil.copy2(f, dst)
-                if collected["trajectory_json"] is None:
-                    collected["trajectory_json"] = str(dst)
+                collected["artifact_files"].append(str(dst))
 
-    # 2. Copy workspace logs
+    # 2. Copy workspace logs (entrypoint.sh writes trajectory export here)
     logs_dir = workspace / "logs"
     if logs_dir.is_dir():
         for f in logs_dir.iterdir():
@@ -217,8 +247,17 @@ def collect_trajectory(workspace: Path, results_dir: Path, openclaw_state_dir: P
                     shutil.copy2(f, agent_dir / "trajectory.json")
                     collected["trajectory_json"] = str(agent_dir / "trajectory.json")
             elif f.name == "tool_events.jsonl":
-                shutil.copy2(f, agent_dir / "tool_events.jsonl")
-                collected["tool_events_jsonl"] = str(agent_dir / "tool_events.jsonl")
+                if collected["tool_events_jsonl"] is None:
+                    shutil.copy2(f, agent_dir / "tool_events.jsonl")
+                    collected["tool_events_jsonl"] = str(agent_dir / "tool_events.jsonl")
+            elif f.name == "trajectory_export.log":
+                shutil.copy2(f, artifacts_dir / f.name)
+                collected["artifact_files"].append(str(artifacts_dir / f.name))
+            elif f.name == "openclaw-agent.sqlite":
+                dst = agent_dir / f.name
+                if not dst.exists():
+                    shutil.copy2(f, dst)
+                    collected["artifact_files"].append(str(dst))
             elif f.is_file():
                 shutil.copy2(f, artifacts_dir / f.name)
                 collected["artifact_files"].append(str(artifacts_dir / f.name))

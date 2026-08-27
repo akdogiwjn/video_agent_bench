@@ -72,30 +72,51 @@ def verify_provenance(results_dir: Path) -> dict:
     case_manifest = load_json(case_dir / "case_manifest.json") if case_dir else None
     bs_manifest = load_json(case_dir / "benchmark_source.json") if case_dir else None
 
-    # --- 1. benchmark_commit matches frozen COMMIT file ---
+    # --- 1. benchmark_commit matches a frozen COMMIT file ---
     commit = run_manifest.get("benchmark_commit", "")
-    expected_commit = ""
-    # Try to find the frozen commit
+    frozen_commits = {}
     for bench_name, commit_path in [
         ("VBench", ROOT / "upstream" / "vbench" / "COMMIT"),
         ("VideoWeaver", ROOT / "upstream" / "videoweaver" / "COMMIT"),
         ("AgenticVBench", ROOT / "upstream" / "agentic_vbench" / "COMMIT"),
     ]:
         if commit_path.is_file():
-            frozen = commit_path.read_text().strip()
-            if commit == frozen:
-                expected_commit = frozen
-                break
-    if not expected_commit and case_manifest:
-        expected_commit = case_manifest.get("upstream_commit", "")
-        if commit != expected_commit:
-            expected_commit = ""
+            frozen_commits[bench_name] = commit_path.read_text().strip()
 
-    checks["benchmark_commit"] = {
-        "value": f"{commit[:16]}..." if commit else "missing",
-        "expected": f"{expected_commit[:16]}..." if expected_commit else "not found",
-        "pass": bool(commit) and commit != "unknown" and commit == expected_commit if expected_commit else bool(commit) and commit != "unknown",
-    }
+    # For GEN multi-benchmark-derived: verify benchmark_sources commits
+    benchmark_sources = run_manifest.get("benchmark_sources", {})
+    commit_ok = bool(commit) and commit != "unknown"
+
+    if case_source == "multi-benchmark-derived" and benchmark_sources:
+        # Verify task_content commit matches VBench COMMIT
+        tc = benchmark_sources.get("task_content", {})
+        tc_commit = tc.get("commit", "")
+        vbench_commit = frozen_commits.get("VBench", "")
+        tc_ok = bool(tc_commit) and tc_commit == vbench_commit if vbench_commit else bool(tc_commit)
+
+        # Verify agentic_basis commit matches VideoWeaver COMMIT
+        ab = benchmark_sources.get("agentic_basis", {})
+        ab_commit = ab.get("commit", "")
+        vw_commit = frozen_commits.get("VideoWeaver", "")
+        ab_ok = bool(ab_commit) and ab_commit == vw_commit if vw_commit else bool(ab_commit)
+
+        checks["benchmark_commit"] = {
+            "value": f"{commit[:16]}..." if commit else "missing",
+            "expected": f"VBench={vbench_commit[:12]}..., VideoWeaver={vw_commit[:12]}...",
+            "pass": commit_ok and tc_ok and ab_ok,
+        }
+    else:
+        # EDIT: single benchmark — commit must match a frozen COMMIT file
+        matched = False
+        for bench_name, frozen in frozen_commits.items():
+            if commit == frozen:
+                matched = True
+                break
+        checks["benchmark_commit"] = {
+            "value": f"{commit[:16]}..." if commit else "missing",
+            "expected": f"one of {list(frozen_commits.keys())}",
+            "pass": commit_ok and matched,
+        }
 
     # --- 2. case_id is valid ---
     checks["case_id"] = {
@@ -173,13 +194,36 @@ def verify_provenance(results_dir: Path) -> dict:
             "pass": True,
         }
 
-    # --- 7. skills_sha256 count check (GEN should have skills) ---
+    # --- 7. skills_sha256 verified against upstream source_manifest.json ---
     skills_sha = run_manifest.get("skills_sha256", {})
     if case_source == "multi-benchmark-derived":
-        checks["skills_sha256"] = {
-            "value": f"{len(skills_sha)} files",
-            "pass": len(skills_sha) > 0,  # GEN should have skills
-        }
+        # GEN: verify skills SHA matches frozen VideoWeaver source_manifest.json
+        source_manifest_path = ROOT / "upstream" / "videoweaver" / "skills" / "source_manifest.json"
+        source_manifest = load_json(source_manifest_path)
+        if source_manifest and "files" in source_manifest:
+            frozen_files = source_manifest["files"]
+            # Check that every skill file in run_manifest matches the frozen hash
+            matched = 0
+            mismatched = 0
+            for rel, sha in skills_sha.items():
+                if rel in frozen_files:
+                    if sha == frozen_files[rel]:
+                        matched += 1
+                    else:
+                        mismatched += 1
+                else:
+                    matched += 1  # File not in frozen manifest — allow (could be __pycache__ etc)
+            checks["skills_sha256"] = {
+                "value": f"{len(skills_sha)} files ({matched} matched, {mismatched} mismatched)",
+                "expected": f"{len(frozen_files)} files in source_manifest.json",
+                "pass": len(skills_sha) > 0 and mismatched == 0,
+            }
+        else:
+            checks["skills_sha256"] = {
+                "value": f"{len(skills_sha)} files",
+                "expected": "source_manifest.json not found",
+                "pass": len(skills_sha) > 0,
+            }
     else:
         checks["skills_sha256"] = {
             "value": f"{len(skills_sha)} files",

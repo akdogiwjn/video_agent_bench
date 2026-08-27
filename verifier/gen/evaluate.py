@@ -3,7 +3,7 @@
 
 Hard gate design (revised):
 - format_pass = ALL F-* checks pass
-- semantic_pass = C-01 prompt adherence check passes (VLM or color analysis)
+- semantic_pass = C-01 VLM prompt adherence check passes (VLM unavailable = FAIL)
 - shot_diversity_pass = C-02 multiple distinct shots check passes
 - process_pass = P-* checks pass (>=2 tool calls, >=2 intermediates)
 - Overall pass = format_pass AND semantic_pass AND shot_diversity_pass AND process_pass
@@ -93,7 +93,7 @@ def vlm_check_prompt_adherence(frame_paths: list[str], prompt: str) -> dict:
 
     Returns {"pass": bool, "detail": str, "method": "vlm"}.
     If no VLM API key is available, returns {"pass": False, ...} so
-    the caller can fall back to color analysis.
+    color analysis is diagnostic only (never a PASS gate).
     """
     api_key = os.environ.get("ARK_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
     if not api_key or not frame_paths:
@@ -469,7 +469,7 @@ def evaluate(results_dir: Path, case_dir: Path | None = None) -> dict:
 
     Hard gate design (revised):
     - format_pass = ALL F-* checks pass (rate == 1.0)
-    - semantic_pass = C-01 passes (VLM or color analysis — NEVER skipped)
+    - semantic_pass = C-01 VLM check passes (VLM unavailable = FAIL, color analysis is diagnostic only)
     - shot_diversity_pass = C-02 passes
     - process_pass = ALL P-* checks pass (>=2 tool calls, >=2 intermediates)
     - Overall pass = format_pass AND semantic_pass AND shot_diversity_pass AND process_pass
