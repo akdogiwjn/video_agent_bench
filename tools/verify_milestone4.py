@@ -46,7 +46,7 @@ def check_docker_image():
     for tool, cmd in [("ffmpeg", "ffmpeg -version"), ("python", "python3 --version"), ("openclaw", "openclaw --version")]:
         try:
             result = subprocess.run(
-                ["docker", "run", "--rm", IMAGE, "bash", "-c", cmd],
+                ["docker", "run", "--rm", "--entrypoint", "/bin/bash", IMAGE, "-c", cmd],
                 capture_output=True, text=True, timeout=30
             )
             if result.returncode == 0:

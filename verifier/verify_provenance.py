@@ -129,7 +129,7 @@ def verify_provenance(results_dir: Path) -> dict:
     expected_task_sha = ""
     if case_manifest and "files" in case_manifest:
         for rel, sha in case_manifest["files"].items():
-            if "instruction" in rel or "task" in rel:
+            if "instruction" in rel:  # must match instruction.md/txt, not brief.md
                 expected_task_sha = sha
                 break
     checks["task_sha256"] = {

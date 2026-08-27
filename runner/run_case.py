@@ -472,17 +472,18 @@ def run_case(args):
         benchmark_sources["primary"] = {"benchmark": benchmark_name, "commit": upstream_commit}
     import hashlib as _hl
     verifier_hasher = _hl.sha256()
-    for vf in [ROOT / "verifier" / case_type / "evaluate.py", case_dir / "rubric" / "rubric_deterministic.json"]:
-        if vf.is_file():
-            verifier_hasher.update(str(vf.relative_to(ROOT)).encode()); verifier_hasher.update(b"\0")
-            verifier_hasher.update(vf.read_bytes()); verifier_hasher.update(b"\0")
+    # Collect all verifier files, then sort for deterministic ordering
+    # (must match verify_provenance.py which sorts by str(path))
+    _vf_list = [ROOT / "verifier" / case_type / "evaluate.py",
+                case_dir / "rubric" / "rubric_deterministic.json"]
     if case_type == "edit":
         task_id = manifest.get("case_id", "football")
         for fname in ["rubric.json", "judge.py", "aggregate.py", "test.sh", "config.yaml"]:
-            vf = ROOT / "upstream" / "agentic_vbench" / "tasks_repurpose" / task_id / "steps" / "solve" / "tests" / fname
-            if vf.is_file():
-                verifier_hasher.update(str(vf.relative_to(ROOT)).encode()); verifier_hasher.update(b"\0")
-                verifier_hasher.update(vf.read_bytes()); verifier_hasher.update(b"\0")
+            _vf_list.append(ROOT / "upstream" / "agentic_vbench" / "tasks_repurpose" / task_id / "steps" / "solve" / "tests" / fname)
+    for vf in sorted(_vf_list, key=lambda p: str(p)):
+        if vf.is_file():
+            verifier_hasher.update(str(vf.relative_to(ROOT)).encode()); verifier_hasher.update(b"\0")
+            verifier_hasher.update(vf.read_bytes()); verifier_hasher.update(b"\0")
     verifier_sha = verifier_hasher.hexdigest()
 
     # --- Write PRELIMINARY run_manifest.json BEFORE V0/V1/V2 ---

@@ -64,11 +64,16 @@ def probe_video(filepath: Path) -> dict:
 
 
 def extract_frames(video_path: Path, num_frames: int = 10) -> list[str]:
-    """Extract evenly-spaced frames from the video for analysis."""
+    """Extract evenly-spaced frames from the video for analysis.
+
+    Returns paths to temporary PNG files. The caller should clean up
+    the temp directory after use by calling cleanup_frames().
+    """
     tmpdir = Path(tempfile.mkdtemp(prefix="gen_verify_"))
     probe = probe_video(video_path)
     duration = float(probe.get("format", {}).get("duration", 0))
     if duration <= 0:
+        shutil.rmtree(tmpdir, ignore_errors=True)
         return []
 
     frames = []
@@ -85,7 +90,20 @@ def extract_frames(video_path: Path, num_frames: int = 10) -> list[str]:
                 frames.append(str(frame_path))
         except Exception:
             pass
+    if not frames:
+        shutil.rmtree(tmpdir, ignore_errors=True)
     return frames
+
+
+def cleanup_frames(frame_paths: list[str]):
+    """Clean up temporary frame files and their parent directory."""
+    if not frame_paths:
+        return
+    try:
+        tmpdir = Path(frame_paths[0]).parent
+        shutil.rmtree(tmpdir, ignore_errors=True)
+    except Exception:
+        pass
 
 
 def vlm_check_prompt_adherence(frame_paths: list[str], prompt: str) -> dict:
@@ -256,11 +274,13 @@ def check_semantic_content(video_path: Path, prompt: str) -> dict:
 
     if vlm_result["method"] == "vlm":
         # VLM gave a definitive answer — use it as the semantic gate
+        cleanup_frames(frames)
         return vlm_result
 
     # VLM unavailable or errored — semantic gate FAILS
     # Color analysis is included as diagnostic only, NOT as a pass gate
     color_diag = color_analysis_check(frames, prompt)
+    cleanup_frames(frames)
     return {
         "pass": False,
         "detail": f"VLM unavailable — semantic check NOT_EVALUATED (FAIL). "

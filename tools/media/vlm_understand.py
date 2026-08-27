@@ -73,7 +73,7 @@ def call_vlm(image_path: str | None, video_path: str | None, prompt: str, model:
         frames_sent = 0
         for i in range(num_samples):
             t = (duration / (num_samples + 1)) * (i + 1) if duration > 0 else 0
-            tmp = tempfile.mktemp(suffix=".png")
+            tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False).name
             subprocess.run(
                 ["ffmpeg", "-y", "-ss", str(t), "-i", video_path, "-frames:v", "1", "-q:v", "2", tmp],
                 capture_output=True, timeout=30,
