@@ -92,6 +92,15 @@ EAJSON
 export OUTPUT_DIR="/workspace/output"
 export OPENCLAW_WORKSPACE_DIR="/workspace"
 
+# --- Map DeepSeek API key to OpenAI-compatible vars for OpenClaw ---
+# OpenClaw uses OPENAI_API_KEY / OPENAI_BASE_URL for OpenAI-compatible providers.
+# We map DEEPSEEK_API_KEY → OPENAI_API_KEY for the Agent LLM only.
+# VLM / image-gen / video-gen use DASHSCOPE_API_KEY directly (not OPENAI_API_KEY).
+if [ -n "$DEEPSEEK_API_KEY" ]; then
+    export OPENAI_API_KEY="$DEEPSEEK_API_KEY"
+    export OPENAI_BASE_URL="${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}"
+fi
+
 echo "=== video-agent-bench entrypoint ==="
 echo "  task_file:    $TASK_FILE"
 echo "  model:        $AGENT_MODEL"

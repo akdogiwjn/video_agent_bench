@@ -18,6 +18,8 @@ import os
 import shutil
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent.parent
+
 
 WORKSPACE_DIRS = ["task", "materials", "references", "skills", "output", "logs", "tools"]
 
@@ -96,6 +98,16 @@ def create_workspace(root: Path) -> Path:
             if f.is_file() and f.suffix == ".py" and f.name != "__init__.py":
                 shutil.copy2(f, tools_dst / f.name)
 
+    # Copy DashScope provider adapters into workspace/tools/providers/
+    providers_src = Path(__file__).resolve().parent.parent / "tools" / "providers"
+    providers_dst = tools_dst / "providers"
+    if providers_src.is_dir():
+        providers_dst.mkdir(exist_ok=True)
+        (providers_dst / "__init__.py").touch()
+        for f in providers_src.iterdir():
+            if f.is_file() and f.suffix == ".py" and f.name != "__init__.py":
+                shutil.copy2(f, providers_dst / f.name)
+
     return root
 
 
@@ -141,15 +153,22 @@ def populate_references(workspace: Path, case_dir: Path) -> list[Path]:
 def populate_skills(workspace: Path, skills_root: Path, visible_capabilities: list[str]) -> list[Path]:
     """Copy foundation skills into workspace/skills/ based on visible_capabilities.
 
-    For GEN cases, this mounts the VideoWeaver foundation skills that match
-    the case's visible_capabilities list, plus any skills those capabilities
-    implicitly depend on (e.g., get-output-dir for image-gen/video-gen).
+    For GEN cases:
+    - image-gen and video-gen use ADAPTED skills (runtime_skills/) with DashScope backend
+    - Other skills (merge-video, extract-video-frame, get-output-dir, etc.) use
+      the original frozen VideoWeaver skills (upstream/videoweaver/skills/)
+    - Dependency closure is resolved automatically
+
     For EDIT cases, skills/ stays empty (the agent uses shell/python/ffmpeg directly).
     """
     skills_dst = workspace / "skills"
     copied = []
     if not skills_root.is_dir():
         return copied
+
+    # Adapted skills that use DashScope instead of Volcengine ARK
+    adapted_skill_names = {"image-gen", "video-gen"}
+    adapted_skills_root = ROOT / "runtime_skills"
 
     # Map capability names to skill directory names
     capability_to_skill = {
@@ -193,7 +212,12 @@ def populate_skills(workspace: Path, skills_root: Path, visible_capabilities: li
         skill_name = capability_to_skill.get(cap)
         if skill_name is None:
             continue
-        skill_src = skills_root / skill_name
+        # Use adapted skills for image-gen/video-gen (DashScope backend)
+        # Use original frozen VideoWeaver skills for everything else
+        if skill_name in adapted_skill_names and (adapted_skills_root / skill_name).is_dir():
+            skill_src = adapted_skills_root / skill_name
+        else:
+            skill_src = skills_root / skill_name
         if skill_src.is_dir():
             skill_dst_dir = skills_dst / skill_name
             if not skill_dst_dir.exists():

@@ -35,6 +35,29 @@ repurpose.mp4
 AgenticVBench Verification
 ```
 
+## Provider Mapping
+
+This project uses DeepSeek + DashScope as the default provider backend.
+VideoWeaver frozen skills are adapted to use DashScope instead of Volcengine ARK.
+
+| Capability | Provider | Model | Env Var |
+|-----------|----------|-------|---------|
+| Agent LLM | DeepSeek | deepseek-v4-flash | `DEEPSEEK_API_KEY` |
+| VLM (visual understanding / semantic judge) | DashScope | qwen-vl-max | `DASHSCOPE_API_KEY` + `VLM_MODEL` |
+| Omni (audio/video understanding) | DashScope | configurable | `OMNI_MODEL` |
+| Image generation (adapted from VideoWeaver image-gen) | DashScope Wan | configurable | `IMAGE_GEN_MODEL` |
+| Video generation (adapted from VideoWeaver video-gen) | DashScope Wan | configurable | `VIDEO_GEN_MODEL` |
+| ASR | local Whisper | base | (no key needed) |
+| Media editing | FFmpeg / Python | — | — |
+
+**VideoWeaver**: foundation skill / agentic pattern source. Generation backend
+adapted to DashScope Wan. Original skills remain frozen in `upstream/`.
+
+**AgenticVBench**: official task/rubric source. Default local configuration uses
+adapted Qwen-VL/Qwen-Omni verifier (`EDIT_VERIFIER_MODE=adapted`). Official
+Gemini + Anthropic verifier remains available (`EDIT_VERIFIER_MODE=official`).
+Adapted verifier output is NOT official AgenticVBench score.
+
 ## Upstream benchmarks
 
 | Benchmark | Repository | Commit | Role in project |

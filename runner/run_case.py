@@ -399,12 +399,23 @@ def run_case(args):
         }
     else:
         env_vars = {}
-        # Pass through API keys from environment
+        # Pass through all configured environment variables to Docker container
+        # Provider-specific keys — no ARK/Volcengine by default
         for key in [
-            "ARK_API_KEY", "TOS_ACCESS_KEY", "TOS_SECRET_KEY",
-            "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY",
-            "ASR_APPID", "ASR_TOKEN", "APP_ID", "APP_SECRET",
-            "VOLCENGINE_TTS_APPID", "VOLCENGINE_TTS_TOKEN",
+            # Agent (DeepSeek)
+            "DEEPSEEK_API_KEY", "DEEPSEEK_BASE_URL",
+            # DashScope (VLM, image-gen, video-gen, omni)
+            "DASHSCOPE_API_KEY", "DASHSCOPE_BASE_URL",
+            "VLM_PROVIDER", "VLM_MODEL", "VLM_BASE_URL",
+            "OMNI_PROVIDER", "OMNI_MODEL",
+            "IMAGE_GEN_PROVIDER", "IMAGE_GEN_MODEL",
+            "VIDEO_GEN_PROVIDER", "VIDEO_GEN_MODEL",
+            # EDIT verifier mode
+            "EDIT_VERIFIER_MODE",
+            # Optional: official AgenticVBench verifier
+            "GEMINI_API_KEY", "ANTHROPIC_API_KEY",
+            # ASR (local Whisper, no key needed, but pass through for Volcengine ASR if configured)
+            "ASR_APPID", "ASR_TOKEN",
         ]:
             val = os.environ.get(key)
             if val:
@@ -503,6 +514,28 @@ def run_case(args):
         "started_at": started_at, "finished_at": finished_at,
         "agent_exit_code": result["exit_code"],
         "verifier_status": "pending", "verifier_pass": False, "verifier_reward": 0.0,
+        # Provider metadata — records which backends were used (no API keys)
+        "providers": {
+            "agent_llm": {
+                "provider": "deepseek",
+                "model": args.model,
+            },
+            "vlm": {
+                "provider": os.environ.get("VLM_PROVIDER", "dashscope"),
+                "model": os.environ.get("VLM_MODEL", ""),
+            },
+            "image_generation": {
+                "provider": os.environ.get("IMAGE_GEN_PROVIDER", "dashscope"),
+                "model": os.environ.get("IMAGE_GEN_MODEL", ""),
+            },
+            "video_generation": {
+                "provider": os.environ.get("VIDEO_GEN_PROVIDER", "dashscope"),
+                "model": os.environ.get("VIDEO_GEN_MODEL", ""),
+            },
+        },
+        "skill_backend_adapted": True,
+        "skill_source": "VideoWeaver",
+        "edit_verifier_mode": os.environ.get("EDIT_VERIFIER_MODE", "adapted"),
     }
     write_run_manifest(run_manifest, results_dir / "run_manifest.json")
 
@@ -549,7 +582,7 @@ def main():
                         help="Case ID (for GEN cases with subdirectory layout, e.g. gen_case_001)")
     parser.add_argument("--image", default="video-agent-bench:1.0",
                         help="Docker image to use")
-    parser.add_argument("--model", default=os.environ.get("AGENT_MODEL", "anthropic/claude-sonnet-4-6"),
+    parser.add_argument("--model", default=os.environ.get("AGENT_MODEL", "openai/deepseek-v4-flash"),
                         help="Agent model")
     parser.add_argument("--timeout", type=int, default=int(os.environ.get("TIMEOUT", "3600")),
                         help="Agent timeout in seconds")

@@ -1,44 +1,69 @@
 # Model configuration for video_agent_bench
-# These are the models that foundation skills and verifiers expect.
-# Keys are read by skill scripts via environment variables.
+# Maps capability → provider, environment variable, and model name.
+# VideoWeaver frozen skills use ARK/Volcengine as their original backend;
+# this project adapts the backends to DashScope while preserving the
+# VideoWeaver skill design pattern.
 
 models:
-  # VideoWeaver foundation skills
+  # Agent LLM (OpenClaw backbone)
+  agent_llm:
+    provider: deepseek
+    env_key: DEEPSEEK_API_KEY
+    base_url_env: DEEPSEEK_BASE_URL
+    default_model: openai/deepseek-v4-flash
+
+  # VLM — visual understanding / semantic judge
+  vlm:
+    provider: dashscope
+    env_key: DASHSCOPE_API_KEY
+    base_url_env: VLM_BASE_URL
+    model_env: VLM_MODEL
+    default_model: qwen-vl-max
+
+  # Omni — audio/video multimodal understanding
+  omni:
+    provider: dashscope
+    env_key: DASHSCOPE_API_KEY
+    base_url_env: DASHSCOPE_BASE_URL
+    model_env: OMNI_MODEL
+
+  # Image generation (adapted from VideoWeaver image-gen skill)
   image_gen:
-    provider: seedream
-    env_key: ARK_API_KEY
-    note: "VideoWeaver skills/image-gen uses Volcengine ARK API"
+    provider: dashscope
+    env_key: DASHSCOPE_API_KEY
+    base_url_env: DASHSCOPE_BASE_URL
+    model_env: IMAGE_GEN_MODEL
+    note: "Adapted from VideoWeaver image-gen; backend changed from Volcengine ARK/Seedream to DashScope Wan"
 
+  # Video generation (adapted from VideoWeaver video-gen skill)
   video_gen:
-    provider: seedance
-    env_key: ARK_API_KEY
-    note: "VideoWeaver skills/video-gen uses Volcengine ARK API"
+    provider: dashscope
+    env_key: DASHSCOPE_API_KEY
+    base_url_env: DASHSCOPE_BASE_URL
+    model_env: VIDEO_GEN_MODEL
+    note: "Adapted from VideoWeaver video-gen; backend changed from Volcengine ARK/Seedance to DashScope Wan"
 
-  vision_understanding:
-    provider: volcengine_vlm
-    env_key: ARK_API_KEY
-
+  # ASR — local Whisper (unchanged)
   asr:
     provider: whisper_local
     note: "ASR uses local Whisper model (pre-cached in Docker). No API key needed."
 
-  asr_volcengine:
-    provider: volcengine_asr
-    env_keys: [ASR_APPID, ASR_TOKEN]
-    note: "VideoWeaver skills/automatic-speech-recognition uses Volcengine ASR (requires ASR_APPID + ASR_TOKEN)"
-
-  tts:
-    provider: volcengine_tts
-    env_keys: [VOLCENGINE_TTS_APPID, VOLCENGINE_TTS_TOKEN]
-    note: "VideoWeaver skills/text-to-speech uses Volcengine TTS"
-
-  # AgenticVBench repurpose verifier
-  verifier_judge_content:
-    provider: anthropic
-    env_key: ANTHROPIC_API_KEY
-    note: "Used by AgenticVBench judge.py for rubric-based content judging"
-
-  verifier_judge_audio_video:
-    provider: gemini
-    env_key: GEMINI_API_KEY
-    note: "Used by AgenticVBench judge.py for audio/video grading"
+  # EDIT verifier
+  edit_verifier:
+    mode_env: EDIT_VERIFIER_MODE
+    adapted:
+      visual_judge:
+        provider: dashscope
+        env_key: DASHSCOPE_API_KEY
+        model_env: VLM_MODEL
+      audio_judge:
+        provider: dashscope
+        env_key: DASHSCOPE_API_KEY
+        model_env: OMNI_MODEL
+    official:
+      visual_judge:
+        provider: anthropic
+        env_key: ANTHROPIC_API_KEY
+      audio_judge:
+        provider: gemini
+        env_key: GEMINI_API_KEY

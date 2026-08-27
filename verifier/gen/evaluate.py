@@ -113,21 +113,22 @@ def vlm_check_prompt_adherence(frame_paths: list[str], prompt: str) -> dict:
     If no VLM API key is available, returns {"pass": False, ...} so
     color analysis is diagnostic only (never a PASS gate).
     """
-    api_key = os.environ.get("ARK_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
+    # Use DashScope API key and VLM model (Qwen-VL)
+    api_key = os.environ.get("DASHSCOPE_API_KEY", "")
     if not api_key or not frame_paths:
-        return {"pass": False, "detail": "no VLM API key or no frames", "method": "vlm_unavailable"}
+        return {"pass": False, "detail": "no DASHSCOPE_API_KEY or no frames", "method": "vlm_unavailable"}
+
+    vlm_model = os.environ.get("VLM_MODEL", "")
+    if not vlm_model:
+        return {"pass": False, "detail": "VLM_MODEL not set", "method": "vlm_unavailable"}
 
     try:
         from openai import OpenAI
     except ImportError:
         return {"pass": False, "detail": "openai package not installed", "method": "vlm_unavailable"}
 
-    base_url = os.environ.get("ARK_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3")
-    if not os.environ.get("ARK_API_KEY"):
-        base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
-
+    base_url = os.environ.get("VLM_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
     client = OpenAI(api_key=api_key, base_url=base_url)
-    vlm_model = os.environ.get("VLM_MODEL", "doubao-1-5-vision-pro-32k-250115")
 
     # Use first, middle, and last frames
     sample_indices = [0, len(frame_paths) // 2, -1] if len(frame_paths) >= 3 else [0]
