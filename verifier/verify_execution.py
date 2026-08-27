@@ -61,25 +61,41 @@ def verify_execution(results_dir: Path, case_type: str | None = None) -> dict:
         "reason": "Raw OpenClaw state must be persisted (mount /root/.openclaw)" if not has_raw_state else "",
     }
 
-    # 3. Trajectory exists
+    # 3. Trajectory exists (events.jsonl or normalized_trajectory.json)
+    events_path = results_dir / "agent" / "events.jsonl"
     trajectory_path = results_dir / "agent" / "trajectory.json"
     normalized_path = results_dir / "agent" / "normalized_trajectory.json"
-    has_trajectory = trajectory_path.is_file() or normalized_path.is_file()
+    has_trajectory = (events_path.is_file() or trajectory_path.is_file()
+                      or normalized_path.is_file())
     checks["trajectory_exists"] = {
-        "value": str(trajectory_path.name) if has_trajectory else "MISSING",
+        "value": ("events.jsonl" if events_path.is_file()
+                  else "trajectory.json" if trajectory_path.is_file()
+                  else "normalized_trajectory.json" if normalized_path.is_file()
+                  else "MISSING"),
         "pass": has_trajectory,
         "reason": "Trajectory must exist to prove agent execution" if not has_trajectory else "",
     }
 
     # 4. Tool calls in trajectory (>0 required for video Agent workloads)
+    # Accept both normalized (tool_call) and raw OpenClaw (tool.call) types
     tool_call_count = 0
-    traj_file = normalized_path if normalized_path.is_file() else trajectory_path
-    if traj_file.is_file():
+    for traj_file in [normalized_path, events_path, trajectory_path]:
+        if not traj_file.is_file():
+            continue
         try:
             with open(traj_file) as f:
-                trajectory = json.load(f)
+                # Try JSON first, then JSONL
+                try:
+                    trajectory = json.load(f)
+                except json.JSONDecodeError:
+                    f.seek(0)
+                    trajectory = [json.loads(line) for line in f if line.strip()]
             if isinstance(trajectory, list):
-                tool_call_count = sum(1 for e in trajectory if isinstance(e, dict) and e.get("type") == "tool_call")
+                tool_call_count = sum(
+                    1 for e in trajectory
+                    if isinstance(e, dict) and e.get("type") in ("tool_call", "tool.call")
+                )
+            break
         except Exception:
             pass
     checks["tool_calls_present"] = {

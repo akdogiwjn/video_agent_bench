@@ -497,6 +497,7 @@ def run_case(args):
         "task_sha256": task_sha, "instruction_sha256": task_sha,
         "original_prompt_sha256": original_prompt_sha, "adaptation_sha256": adaptation_sha,
         "input_sha256": input_sha, "skills_sha256": skills_sha, "verifier_sha256": verifier_sha,
+        "tools_sha256": hash_directory(workspace / "tools") if (workspace / "tools").is_dir() else {},
         "started_at": started_at, "finished_at": finished_at,
         "agent_exit_code": result["exit_code"],
         "verifier_status": "pending", "verifier_pass": False, "verifier_reward": 0.0,

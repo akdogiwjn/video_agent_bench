@@ -191,21 +191,19 @@ def collect_trajectory(workspace: Path, results_dir: Path, openclaw_state_dir: P
                 shutil.copy2(item, dst)
         collected["raw_openclaw_state"] = str(raw_dir)
 
-        # Look for trajectory export files in trajectory-exports/
+        # Look for trajectory export files written by entrypoint.sh to workspace
+        # (not in /root/.openclaw — entrypoint.sh exports to /workspace/.openclaw/)
+        # This section is a fallback for older OpenClaw versions that wrote to ~/.openclaw/
         exports_dir = raw_dir / "trajectory-exports"
         if exports_dir.is_dir():
-            for f in sorted(exports_dir.rglob("*.json")):
-                dst = agent_dir / "trajectory.json"
-                if not dst.exists():
-                    shutil.copy2(f, dst)
+            # Look specifically for events.jsonl (the canonical event stream)
+            events_file = exports_dir / "benchmark-trajectory" / "events.jsonl"
+            if events_file.is_file() and collected["tool_events_jsonl"] is None:
+                dst = agent_dir / "events.jsonl"
+                shutil.copy2(events_file, dst)
+                collected["tool_events_jsonl"] = str(dst)
+                if collected["trajectory_json"] is None:
                     collected["trajectory_json"] = str(dst)
-                    break
-            for f in sorted(exports_dir.rglob("*.jsonl")):
-                dst = agent_dir / "tool_events.jsonl"
-                if not dst.exists():
-                    shutil.copy2(f, dst)
-                    collected["tool_events_jsonl"] = str(dst)
-                    break
 
         # Fallback: look for legacy session JSONL files
         if collected["trajectory_json"] is None:
@@ -232,24 +230,36 @@ def collect_trajectory(workspace: Path, results_dir: Path, openclaw_state_dir: P
                 shutil.copy2(f, dst)
                 collected["artifact_files"].append(str(dst))
 
-    # 2. Copy workspace logs (entrypoint.sh writes trajectory export here)
+    # 2. Copy workspace logs (entrypoint.sh writes trajectory bundle here)
     logs_dir = workspace / "logs"
     if logs_dir.is_dir():
+        # First: look for the trajectory bundle directory
+        bundle_dir = logs_dir / "trajectory_bundle"
+        if bundle_dir.is_dir():
+            # Preserve the entire bundle as-is under raw/
+            bundle_dst = raw_dir / "trajectory_bundle"
+            if not bundle_dst.exists():
+                shutil.copytree(bundle_dir, bundle_dst, dirs_exist_ok=True)
+
+            # events.jsonl is the canonical event stream
+            events_file = bundle_dir / "events.jsonl"
+            if events_file.is_file():
+                dst = agent_dir / "events.jsonl"
+                shutil.copy2(events_file, dst)
+                collected["tool_events_jsonl"] = str(dst)
+                # Also use events.jsonl as the primary trajectory source
+                collected["trajectory_json"] = str(dst)
+
+        # Copy individual log files
         for f in logs_dir.iterdir():
+            if not f.is_file():
+                continue
             if f.name == "stdout.log":
                 shutil.copy2(f, agent_dir / "stdout.log")
                 collected["stdout_log"] = str(agent_dir / "stdout.log")
             elif f.name == "stderr.log":
                 shutil.copy2(f, agent_dir / "stderr.log")
                 collected["stderr_log"] = str(agent_dir / "stderr.log")
-            elif f.name == "trajectory.json":
-                if collected["trajectory_json"] is None:
-                    shutil.copy2(f, agent_dir / "trajectory.json")
-                    collected["trajectory_json"] = str(agent_dir / "trajectory.json")
-            elif f.name == "tool_events.jsonl":
-                if collected["tool_events_jsonl"] is None:
-                    shutil.copy2(f, agent_dir / "tool_events.jsonl")
-                    collected["tool_events_jsonl"] = str(agent_dir / "tool_events.jsonl")
             elif f.name == "trajectory_export.log":
                 shutil.copy2(f, artifacts_dir / f.name)
                 collected["artifact_files"].append(str(artifacts_dir / f.name))
@@ -258,6 +268,13 @@ def collect_trajectory(workspace: Path, results_dir: Path, openclaw_state_dir: P
                 if not dst.exists():
                     shutil.copy2(f, dst)
                     collected["artifact_files"].append(str(dst))
+            elif f.name == "events.jsonl":
+                if collected["tool_events_jsonl"] is None:
+                    dst = agent_dir / "events.jsonl"
+                    shutil.copy2(f, dst)
+                    collected["tool_events_jsonl"] = str(dst)
+                    if collected["trajectory_json"] is None:
+                        collected["trajectory_json"] = str(dst)
             elif f.is_file():
                 shutil.copy2(f, artifacts_dir / f.name)
                 collected["artifact_files"].append(str(artifacts_dir / f.name))
@@ -308,14 +325,27 @@ def normalize_trajectory(raw_trajectory_path: Path, output_path: Path) -> bool:
         for entry in raw:
             if not isinstance(entry, dict):
                 continue
-            event = {"timestamp": entry.get("timestamp", entry.get("ts", ""))}
+            event = {"timestamp": entry.get("timestamp", entry.get("ts", entry.get("time", "")))}
 
             entry_type = entry.get("type", "")
-            if entry_type in ("model", "tool_call", "tool_result", "message"):
-                event["type"] = entry_type
+            data = entry.get("data", {}) if isinstance(entry.get("data"), dict) else {}
+
+            # Map OpenClaw event types to normalized types
+            if entry_type in ("model", "tool_call", "tool_result", "message",
+                              "model.completed", "session.ended"):
+                if entry_type == "model.completed":
+                    event["type"] = "model"
+                elif entry_type == "session.ended":
+                    event["type"] = "message"
+                else:
+                    event["type"] = entry_type
+            elif entry_type in ("tool.call", "tool_call"):
+                event["type"] = "tool_call"
+            elif entry_type in ("tool.result", "tool_result"):
+                event["type"] = "tool_result"
             elif entry.get("role") == "assistant":
                 event["type"] = "model"
-            elif entry.get("tool_calls") or entry.get("tool"):
+            elif entry.get("tool_calls") or entry.get("tool") or entry.get("toolName"):
                 event["type"] = "tool_call"
             elif entry.get("tool_result") or entry.get("result"):
                 event["type"] = "tool_result"
@@ -323,11 +353,37 @@ def normalize_trajectory(raw_trajectory_path: Path, output_path: Path) -> bool:
                 event["type"] = entry_type or "message"
 
             if event["type"] == "tool_call":
-                event["tool"] = entry.get("tool", entry.get("tool_name", "unknown"))
-                event["arguments"] = entry.get("arguments", entry.get("args", {}))
+                event["tool"] = (
+                    entry.get("toolName")
+                    or entry.get("tool")
+                    or entry.get("tool_name")
+                    or data.get("toolName")
+                    or data.get("tool")
+                    or "unknown"
+                )
+                event["arguments"] = (
+                    entry.get("arguments")
+                    or entry.get("args")
+                    or data.get("arguments")
+                    or data.get("args")
+                    or {}
+                )
             elif event["type"] == "tool_result":
-                event["tool"] = entry.get("tool", entry.get("tool_name", "unknown"))
-                event["status"] = entry.get("status", "unknown")
+                event["tool"] = (
+                    entry.get("toolName")
+                    or entry.get("tool")
+                    or entry.get("tool_name")
+                    or data.get("toolName")
+                    or data.get("tool")
+                    or "unknown"
+                )
+                success_val = entry.get("success", data.get("success"))
+                if success_val is True:
+                    event["status"] = "success"
+                elif success_val is False:
+                    event["status"] = "error"
+                else:
+                    event["status"] = entry.get("status", data.get("status", "unknown"))
 
             normalized.append(event)
 

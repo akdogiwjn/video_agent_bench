@@ -241,6 +241,8 @@ def evaluate(results_dir: Path, task_id: str, upstream_root: Path | None = None,
     result["reward"] = verifier_result.get("reward", 0.0)
     result["details"] = {k: v for k, v in verifier_result.items() if k not in ("stdout", "stderr")}
     result["pass"] = result["reward"] > 0.5
+    result["pass_threshold"] = 0.5
+    result["pass_threshold_source"] = "project-defined"
 
     return result
 

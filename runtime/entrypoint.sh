@@ -8,7 +8,7 @@ set -Eeuo pipefail
 #   - configure OpenClaw (openclaw.json, exec-approvals.json, workspace)
 #   - read the task file path from $1
 #   - invoke openclaw agent with the configured model and timeout
-#   - export trajectory after agent completes
+#   - export trajectory after agent completes (even on failure)
 #
 # It must NOT contain any GEN/EDIT business logic. The agent decides
 # what tools to call, what order to call them, and how to produce the
@@ -28,12 +28,6 @@ fi
 TASK_MESSAGE="$(cat "$TASK_FILE")"
 
 # --- Configure OpenClaw before launch ---
-# Settings follow upstream/videoweaver/OpenClaw_Setup.md + current OpenClaw schema:
-#   - agents.defaults.workspace = /workspace (aligns agent workspace with benchmark workspace)
-#   - skills.load.extraDirs = /workspace/skills (foundation skills discovery)
-#   - env.OUTPUT_DIR = /workspace/output (skills know where to write artifacts)
-#   - exec-approvals.json with current schema (version 1, ask=off)
-
 OPENCLAW_HOME="/root/.openclaw"
 mkdir -p "$OPENCLAW_HOME"
 
@@ -58,7 +52,7 @@ cat > "$OPENCLAW_HOME/openclaw.json" <<OCJSON
   "agents": {
     "defaults": {
       "workspace": "/workspace",
-      "timeoutSeconds": 3600,
+      "timeoutSeconds": ${TIMEOUT},
       "verboseDefault": "full",
       "maxConcurrent": 100,
       "subagents": {
@@ -74,7 +68,7 @@ cat > "$OPENCLAW_HOME/openclaw.json" <<OCJSON
 }
 OCJSON
 
-# exec-approvals.json — current OpenClaw schema (full security, no interactive prompts)
+# exec-approvals.json — current OpenClaw schema
 cat > "$OPENCLAW_HOME/exec-approvals.json" <<'EAJSON'
 {
   "version": 1,
@@ -86,7 +80,6 @@ cat > "$OPENCLAW_HOME/exec-approvals.json" <<'EAJSON'
 }
 EAJSON
 
-# Set environment variables for OpenClaw and skills
 export OUTPUT_DIR="/workspace/output"
 export OPENCLAW_WORKSPACE_DIR="/workspace"
 
@@ -96,45 +89,65 @@ echo "  model:        $AGENT_MODEL"
 echo "  timeout:      $TIMEOUT"
 echo "  session_key:  $SESSION_KEY"
 echo "  workspace:    /workspace"
-echo "  openclaw_home: $OPENCLAW_HOME"
-echo "  skills_dir:   /workspace/skills"
-echo "  output_dir:   $OUTPUT_DIR"
 echo "==================================="
 
-# Run the agent with an explicit session key for trajectory export
+# --- Run agent ---
+# Use set +e so that agent failure does NOT prevent trajectory export.
+# Trajectory is most critical when the agent fails or times out.
+set +e
 openclaw agent \
     --local \
     --agent main \
     --model "$AGENT_MODEL" \
     --session-key "$SESSION_KEY" \
+    --timeout "$TIMEOUT" \
     --message "$TASK_MESSAGE"
-
 AGENT_EXIT_CODE=$?
+set -e
 
-# --- Export trajectory using OpenClaw's official export interface ---
-# OpenClaw stores session data in SQLite (~/.openclaw/agents/<id>/agent/openclaw-agent.sqlite).
-# The JSONL files under sessions/ are legacy/archive, not the canonical runtime trajectory.
-# We use `openclaw sessions export-trajectory` to get the canonical trajectory export.
+echo "  agent exit code: $AGENT_EXIT_CODE"
+
+# --- Export trajectory (runs even if agent failed) ---
 echo "=== Exporting trajectory (session_key=$SESSION_KEY) ==="
 mkdir -p /workspace/logs
+
+set +e
 openclaw sessions export-trajectory \
     --session-key "$SESSION_KEY" \
     --workspace /workspace \
     --output benchmark-trajectory \
-    --json 2>&1 | tee /workspace/logs/trajectory_export.log || {
-    echo "WARNING: trajectory export failed — will try fallback" >&2
-}
+    --json > /workspace/logs/trajectory_export.log 2>&1
+EXPORT_EXIT_CODE=$?
+set -e
 
-# The export lands in ~/.openclaw/trajectory-exports/<output>/
-EXPORT_DIR="$OPENCLAW_HOME/trajectory-exports/benchmark-trajectory"
-if [ -d "$EXPORT_DIR" ]; then
-    cp -r "$EXPORT_DIR"/* /workspace/logs/ 2>/dev/null || true
+if [ $EXPORT_EXIT_CODE -ne 0 ]; then
+    echo "WARNING: trajectory export failed (exit=$EXPORT_EXIT_CODE)" >&2
+    echo "  Log:" >&2
+    cat /workspace/logs/trajectory_export.log >&2 || true
 fi
 
-# Also copy the SQLite database for raw state preservation
+# The export lands in <workspace>/.openclaw/trajectory-exports/<output>/
+# NOT in /root/.openclaw/ (the --workspace flag controls the export location)
+EXPORT_DIR="/workspace/.openclaw/trajectory-exports/benchmark-trajectory"
+if [ -d "$EXPORT_DIR" ]; then
+    mkdir -p /workspace/logs/trajectory_bundle
+    cp -a "$EXPORT_DIR"/. /workspace/logs/trajectory_bundle/ 2>/dev/null || true
+    echo "  Trajectory bundle copied to /workspace/logs/trajectory_bundle/"
+else
+    echo "WARNING: export directory not found at $EXPORT_DIR" >&2
+    # Fallback: check /root/.openclaw/ in case of older OpenClaw versions
+    FALLBACK_DIR="$OPENCLAW_HOME/trajectory-exports/benchmark-trajectory"
+    if [ -d "$FALLBACK_DIR" ]; then
+        mkdir -p /workspace/logs/trajectory_bundle
+        cp -a "$FALLBACK_DIR"/. /workspace/logs/trajectory_bundle/ 2>/dev/null || true
+        echo "  Trajectory bundle found at fallback location"
+    fi
+fi
+
+# Copy SQLite database for raw state preservation
 SQLITE_DB="$OPENCLAW_HOME/agents/main/agent/openclaw-agent.sqlite"
 if [ -f "$SQLITE_DB" ]; then
     cp "$SQLITE_DB" /workspace/logs/openclaw-agent.sqlite 2>/dev/null || true
 fi
 
-exit $AGENT_EXIT_CODE
+exit "$AGENT_EXIT_CODE"

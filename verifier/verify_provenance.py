@@ -205,18 +205,23 @@ def verify_provenance(results_dir: Path) -> dict:
             # Check that every skill file in run_manifest matches the frozen hash
             matched = 0
             mismatched = 0
+            extra_files = 0
             for rel, sha in skills_sha.items():
+                # Skip __pycache__ and .pyc files (runtime-generated, not in frozen manifest)
+                if "__pycache__" in rel or rel.endswith(".pyc"):
+                    continue
                 if rel in frozen_files:
                     if sha == frozen_files[rel]:
                         matched += 1
                     else:
                         mismatched += 1
                 else:
-                    matched += 1  # File not in frozen manifest — allow (could be __pycache__ etc)
+                    # File not in frozen manifest — this is a provenance violation
+                    extra_files += 1
             checks["skills_sha256"] = {
-                "value": f"{len(skills_sha)} files ({matched} matched, {mismatched} mismatched)",
+                "value": f"{len(skills_sha)} files ({matched} matched, {mismatched} mismatched, {extra_files} extra)",
                 "expected": f"{len(frozen_files)} files in source_manifest.json",
-                "pass": len(skills_sha) > 0 and mismatched == 0,
+                "pass": len(skills_sha) > 0 and mismatched == 0 and extra_files == 0,
             }
         else:
             checks["skills_sha256"] = {
@@ -230,12 +235,43 @@ def verify_provenance(results_dir: Path) -> dict:
             "pass": True,  # EDIT has no skills
         }
 
-    # --- 8. verifier_sha256 is present and valid (64 hex chars) ---
+    # --- 8. verifier_sha256 recomputed from actual verifier files ---
     verifier_sha = run_manifest.get("verifier_sha256", "")
-    is_valid_sha = len(verifier_sha) == 64 and all(c in "0123456789abcdef" for c in verifier_sha)
+    # Recompute the bundle hash from the actual verifier files
+    import hashlib as _hl
+    recomputed_hasher = _hl.sha256()
+    verifier_files_to_hash = []
+
+    # Verifier script
+    vf = ROOT / "verifier" / ("gen" if case_source == "multi-benchmark-derived" else "edit") / "evaluate.py"
+    if vf.is_file():
+        verifier_files_to_hash.append(vf)
+    # Rubric (GEN only)
+    if case_dir:
+        rubric = case_dir / "rubric" / "rubric_deterministic.json"
+        if rubric.is_file():
+            verifier_files_to_hash.append(rubric)
+    # EDIT upstream verifier bundle
+    if case_source != "multi-benchmark-derived" and case_manifest:
+        task_id = case_manifest.get("case_id", "football")
+        for fname in ["rubric.json", "judge.py", "aggregate.py", "test.sh", "config.yaml"]:
+            vf2 = ROOT / "upstream" / "agentic_vbench" / "tasks_repurpose" / task_id / "steps" / "solve" / "tests" / fname
+            if vf2.is_file():
+                verifier_files_to_hash.append(vf2)
+
+    for vf_path in sorted(verifier_files_to_hash, key=lambda p: str(p)):
+        try:
+            rel = str(vf_path.relative_to(ROOT))
+        except ValueError:
+            rel = str(vf_path)
+        recomputed_hasher.update(rel.encode()); recomputed_hasher.update(b"\0")
+        recomputed_hasher.update(vf_path.read_bytes()); recomputed_hasher.update(b"\0")
+    recomputed_sha = recomputed_hasher.hexdigest()
+
     checks["verifier_sha256"] = {
         "value": verifier_sha[:16] + "..." if verifier_sha else "missing",
-        "pass": is_valid_sha,
+        "expected": recomputed_sha[:16] + "...",
+        "pass": bool(verifier_sha) and verifier_sha == recomputed_sha,
     }
 
     # --- 9. docker_image_id is not "unknown" ---

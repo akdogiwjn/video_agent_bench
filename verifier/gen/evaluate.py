@@ -291,20 +291,29 @@ def count_intermediate_artifacts(results_dir: Path, expected_output: str = "fina
 
 
 def count_tool_calls(results_dir: Path) -> int:
-    """Count tool_call entries in trajectory."""
-    traj_path = results_dir / "agent" / "normalized_trajectory.json"
-    if not traj_path.is_file():
-        traj_path = results_dir / "agent" / "trajectory.json"
-    if not traj_path.is_file():
-        return 0
+    """Count tool_call entries in trajectory.
 
-    try:
-        with open(traj_path) as f:
-            traj = json.load(f)
-        if isinstance(traj, list):
-            return sum(1 for e in traj if isinstance(e, dict) and e.get("type") == "tool_call")
-    except Exception:
-        pass
+    Accepts both normalized (tool_call) and raw OpenClaw (tool.call) types.
+    Reads from events.jsonl, normalized_trajectory.json, or trajectory.json.
+    """
+    for traj_name in ["events.jsonl", "normalized_trajectory.json", "trajectory.json"]:
+        traj_path = results_dir / "agent" / traj_name
+        if not traj_path.is_file():
+            continue
+        try:
+            with open(traj_path) as f:
+                try:
+                    traj = json.load(f)
+                except json.JSONDecodeError:
+                    f.seek(0)
+                    traj = [json.loads(line) for line in f if line.strip()]
+            if isinstance(traj, list):
+                return sum(
+                    1 for e in traj
+                    if isinstance(e, dict) and e.get("type") in ("tool_call", "tool.call")
+                )
+        except Exception:
+            pass
     return 0
 
 
