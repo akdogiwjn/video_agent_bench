@@ -124,8 +124,11 @@ def run_verifier_in_docker(
     env["CUTBENCH_REPURPOSE_ONLY"] = "1"
 
     # Build docker run command with correct volume mappings
+    # Use --entrypoint /bin/bash to bypass the agent image's ENTRYPOINT
+    # (which runs entrypoint.sh and would treat "bash" as a task file)
     cmd = [
         "docker", "run", "--rm",
+        "--entrypoint", "/bin/bash",
         "--name", f"avb-verifier-{int(__import__('time').time())}",
         "-v", f"{vw_dir / 'tests'}:/tests:ro",
         "-v", f"{vw_dir / 'baked'}:/baked:ro",
@@ -135,7 +138,7 @@ def run_verifier_in_docker(
         "-e", f"GEMINI_API_KEY={env.get('GEMINI_API_KEY', '')}",
         "-e", f"ANTHROPIC_API_KEY={env.get('ANTHROPIC_API_KEY', '')}",
         image,
-        "bash", "/tests/test.sh",
+        "/tests/test.sh",
     ]
 
     try:

@@ -28,10 +28,15 @@ def get_docker_image_id(image: str) -> str:
 
 
 def get_openclaw_version(image: str) -> str:
-    """Get the OpenClaw version from the Docker image."""
+    """Get the OpenClaw version from the Docker image.
+
+    Uses --entrypoint /bin/bash to bypass the agent image's ENTRYPOINT
+    (which runs entrypoint.sh and would treat 'bash' as a task file).
+    """
     try:
         result = subprocess.run(
-            ["docker", "run", "--rm", image, "bash", "-c", "openclaw --version"],
+            ["docker", "run", "--rm", "--entrypoint", "/bin/bash",
+             image, "-c", "openclaw --version"],
             capture_output=True, text=True, timeout=30,
         )
         if result.returncode == 0:
@@ -203,13 +208,16 @@ def collect_trajectory(workspace: Path, results_dir: Path, openclaw_state_dir: P
                 shutil.copy2(f, artifacts_dir / f.name)
                 collected["artifact_files"].append(str(artifacts_dir / f.name))
 
-    # 3. Copy output
+    # 3. Copy output (recursive — VideoWeaver creates nested session directories)
     ws_output = workspace / "output"
     if ws_output.is_dir():
-        for f in ws_output.iterdir():
+        for f in ws_output.rglob("*"):
             if f.is_file() and f.name != ".DS_Store":
-                shutil.copy2(f, output_dir / f.name)
-                collected["output_files"].append(str(output_dir / f.name))
+                rel = f.relative_to(ws_output)
+                dst = output_dir / rel
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(f, dst)
+                collected["output_files"].append(str(dst))
 
     return collected
 

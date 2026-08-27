@@ -4,7 +4,7 @@
   "rubric_basis": ["VBench", "VideoWeaver"],
   "official_videoweaver_rubric": false,
   "official_vbench_rubric": false,
-  "description": "Deterministic format and content checks derived from VBench quality dimensions and VideoWeaver output evaluation criteria. This is NOT an official rubric from either benchmark.",
+  "description": "Deterministic format and content checks derived from VBench quality dimensions and VideoWeaver output evaluation criteria. C-01 is a semantic gate that checks prompt adherence via VLM (if available) or prompt-specific color analysis. This is NOT an official rubric from either benchmark.",
   "items": [
     {
       "id": "F-01",
@@ -42,39 +42,39 @@
       "id": "C-01",
       "pillar": "content",
       "weight": 1,
-      "criterion": "Video depicts a sunset/sky scene as described in the prompt",
-      "check": "Visual inspection or VLM-based content check (non-deterministic)",
-      "judge": "vlm_optional"
+      "criterion": "Video content matches the original VBench prompt (semantic prompt adherence)",
+      "check": "VLM-based prompt adherence check if API key available; falls back to prompt-specific color analysis (e.g. sunset scenes must have warm colors). NEVER skipped — a SMPTE test pattern or unrelated video will FAIL.",
+      "judge": "deterministic"
     },
     {
       "id": "C-02",
       "pillar": "content",
       "weight": 1,
       "criterion": "Video contains multiple distinct shots showing different sunset stages",
-      "check": "Scene detection via scenedetect or frame analysis (non-deterministic)",
-      "judge": "deterministic_optional"
+      "check": "Scene detection via scenedetect or frame analysis. Must detect >= 2 scenes or significant frame-to-frame variation.",
+      "judge": "deterministic"
     },
     {
       "id": "P-01",
       "pillar": "process",
       "weight": 1,
-      "criterion": "Agent produced intermediate artifacts (images, video clips, or audio) before final merge",
-      "check": "workspace/output or workspace/logs contains intermediate files",
+      "criterion": "Agent produced >= 2 intermediate artifacts (images, video clips, or audio) before final merge",
+      "check": "Recursive scan of workspace/output for files other than final.mp4. Threshold: >= 2 files.",
       "judge": "deterministic"
     },
     {
       "id": "P-02",
       "pillar": "process",
       "weight": 1,
-      "criterion": "Agent trajectory contains at least one tool call to a media generation or processing capability",
-      "check": "trajectory.json contains type=tool_call entries",
+      "criterion": "Agent trajectory contains >= 2 tool calls to media generation or processing capabilities",
+      "check": "trajectory.json contains >= 2 entries with type=tool_call. Threshold: >= 2.",
       "judge": "deterministic"
     }
   ],
   "scoring": {
-    "format_weight": 0.4,
-    "content_weight": 0.3,
-    "process_weight": 0.3,
-    "note": "Final reward = weighted average of pillar pass rates. Format pillar is fully deterministic. Content pillar may use VLM (optional). Process pillar is deterministic from trajectory."
+    "format_weight": 0.25,
+    "content_weight": 0.50,
+    "process_weight": 0.25,
+    "note": "Hard gate design: pass requires ALL pillars to pass. Content pillar is the semantic gate (C-01 + C-02). A video with correct format but wrong content will FAIL."
   }
 }

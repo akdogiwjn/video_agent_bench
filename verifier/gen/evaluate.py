@@ -1,33 +1,31 @@
 #!/usr/bin/env python3
 """GEN Verifier: Multi-benchmark-derived evaluation adapter.
 
-GEN cases are multi-benchmark-derived (VBench prompt + VideoWeaver agentic
-pattern). The verifier combines:
+Hard gate design (revised):
+- format_pass = ALL F-* checks pass
+- semantic_pass = C-01 prompt adherence check passes (VLM or color analysis)
+- shot_diversity_pass = C-02 multiple distinct shots check passes
+- process_pass = P-* checks pass (>=2 tool calls, >=2 intermediates)
+- Overall pass = format_pass AND semantic_pass AND shot_diversity_pass AND process_pass
 
-1. Case-specific deterministic rubric (project-defined, based on VBench +
-   VideoWeaver evaluation dimensions) — always runs
-2. Content semantic checks (deterministic frame analysis — black/solid
-   color video detection, motion detection, scene diversity)
-3. VideoWeaver Process Evaluation (if AutomaticSkillOptimization/ is available)
-
-Hard gate design:
-- format_pass = ALL format checks pass
-- content_pass = content checks pass (NOT skipped — black video MUST FAIL)
-- process_pass = process checks pass
-- Overall pass = format_pass AND content_pass AND process_pass
-
-A black/solid-color video will FAIL content checks even if format is perfect.
-Content checks that cannot be evaluated are FAIL (not skipped).
+C-01 is the real semantic gate: it checks whether the video content
+matches the original VBench prompt. If a VLM API key is available, it
+uses VLM-based prompt adherence. If not, it uses prompt-specific color
+analysis (e.g., sunset scenes should have warm colors). Either way,
+C-01 is NEVER skipped — a SMPTE test pattern will FAIL.
 
 Usage:
     python3 verifier/gen/evaluate.py --results <run-dir> [--case-dir <path>]
 """
 import argparse
+import base64
+import hashlib
 import json
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -42,31 +40,12 @@ def find_case_rubric(case_dir: Path) -> dict | None:
     return None
 
 
-def find_video_weaver_eval(upstream_root: Path | None = None) -> dict:
-    """Locate VideoWeaver evaluation code in the upstream freeze.
-
-    The evaluation code (evaluation_PRM, evaluation_ORM) lives in
-    AutomaticSkillOptimization/ which was NOT frozen in Milestone 1.
-    Only skills/ were frozen. This is optional — the case-specific
-    deterministic rubric runs regardless.
-    """
-    if upstream_root is None:
-        upstream_root = ROOT / "upstream" / "videoweaver"
-
-    eval_prm = upstream_root / "AutomaticSkillOptimization" / "evaluation_PRM"
-    eval_orm = upstream_root / "AutomaticSkillOptimization" / "evaluation_ORM"
-
-    return {
-        "evaluation_PRM_path": str(eval_prm) if eval_prm.is_dir() else None,
-        "evaluation_ORM_path": str(eval_orm) if eval_orm.is_dir() else None,
-        "available": eval_prm.is_dir() or eval_orm.is_dir(),
-        "note": (
-            "VideoWeaver Process/Output evaluation code (AutomaticSkillOptimization/) "
-            "was not frozen. Only the case-specific deterministic rubric runs. "
-            "Fetch AutomaticSkillOptimization/ from VideoWeaver upstream to enable "
-            "additional process/output evaluation."
-        ),
-    }
+def find_original_prompt(case_dir: Path) -> str:
+    """Load the original VBench prompt for semantic comparison."""
+    prompt_path = case_dir / "source" / "original_prompt.txt"
+    if prompt_path.is_file():
+        return prompt_path.read_text(encoding="utf-8").strip()
+    return ""
 
 
 def probe_video(filepath: Path) -> dict:
@@ -84,68 +63,109 @@ def probe_video(filepath: Path) -> dict:
     return {}
 
 
-def extract_frames_for_analysis(video_path: Path, num_frames: int = 10) -> list[str]:
-    """Extract evenly-spaced frames from the video for content analysis.
-
-    Returns paths to temporary PNG files.
-    """
-    import tempfile
+def extract_frames(video_path: Path, num_frames: int = 10) -> list[str]:
+    """Extract evenly-spaced frames from the video for analysis."""
     tmpdir = Path(tempfile.mkdtemp(prefix="gen_verify_"))
-    try:
-        probe = probe_video(video_path)
-        duration = float(probe.get("format", {}).get("duration", 0))
-        if duration <= 0:
-            return []
-
-        frames = []
-        for i in range(num_frames):
-            t = (duration / (num_frames + 1)) * (i + 1)
-            frame_path = tmpdir / f"frame_{i:03d}.png"
-            try:
-                subprocess.run(
-                    ["ffmpeg", "-y", "-ss", str(t), "-i", str(video_path),
-                     "-frames:v", "1", "-q:v", "2", str(frame_path)],
-                    capture_output=True, timeout=30,
-                )
-                if frame_path.is_file():
-                    frames.append(str(frame_path))
-            except Exception:
-                pass
-        return frames
-    except Exception:
+    probe = probe_video(video_path)
+    duration = float(probe.get("format", {}).get("duration", 0))
+    if duration <= 0:
         return []
 
+    frames = []
+    for i in range(num_frames):
+        t = (duration / (num_frames + 1)) * (i + 1)
+        frame_path = tmpdir / f"frame_{i:03d}.png"
+        try:
+            subprocess.run(
+                ["ffmpeg", "-y", "-ss", str(t), "-i", str(video_path),
+                 "-frames:v", "1", "-q:v", "2", str(frame_path)],
+                capture_output=True, timeout=30,
+            )
+            if frame_path.is_file():
+                frames.append(str(frame_path))
+        except Exception:
+            pass
+    return frames
 
-def analyze_frame_content(frame_paths: list[str]) -> dict:
-    """Analyze extracted frames for content quality.
 
-    Detects:
-    - Black/solid-color video (all frames nearly identical solid color)
-    - No motion (all frames identical)
-    - Low visual diversity (very little variation between frames)
+def vlm_check_prompt_adherence(frame_paths: list[str], prompt: str) -> dict:
+    """Use a VLM to check if the video frames match the prompt.
 
-    Returns a dict with analysis results.
+    Returns {"pass": bool, "detail": str, "method": "vlm"}.
+    If no VLM API key is available, returns {"pass": False, ...} so
+    the caller can fall back to color analysis.
+    """
+    api_key = os.environ.get("ARK_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
+    if not api_key or not frame_paths:
+        return {"pass": False, "detail": "no VLM API key or no frames", "method": "vlm_unavailable"}
+
+    try:
+        from openai import OpenAI
+    except ImportError:
+        return {"pass": False, "detail": "openai package not installed", "method": "vlm_unavailable"}
+
+    base_url = os.environ.get("ARK_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3")
+    if not os.environ.get("ARK_API_KEY"):
+        base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+
+    client = OpenAI(api_key=api_key, base_url=base_url)
+    vlm_model = os.environ.get("VLM_MODEL", "doubao-1-5-vision-pro-32k-250115")
+
+    # Use first, middle, and last frames
+    sample_indices = [0, len(frame_paths) // 2, -1] if len(frame_paths) >= 3 else [0]
+    sample_frames = [frame_paths[i] for i in sample_indices]
+
+    vlm_prompt = (
+        f"The following is a video generation prompt:\n\n\"{prompt}\"\n\n"
+        f"I will show you {len(sample_frames)} frames from a generated video. "
+        f"Does the visual content of these frames match the prompt? "
+        f"Answer with EXACTLY 'YES' or 'NO' on the first line, then a one-sentence reason."
+    )
+
+    content = [{"type": "text", "text": vlm_prompt}]
+    for fp in sample_frames:
+        with open(fp, "rb") as f:
+            img_b64 = base64.b64encode(f.read()).decode()
+        content.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/png;base64,{img_b64}"}
+        })
+
+    try:
+        response = client.chat.completions.create(
+            model=vlm_model,
+            messages=[{"role": "user", "content": content}],
+            max_tokens=200,
+        )
+        answer = response.choices[0].message.content.strip()
+        is_yes = answer.upper().startswith("YES")
+        return {"pass": is_yes, "detail": f"VLM answer: {answer}", "method": "vlm"}
+    except Exception as e:
+        return {"pass": False, "detail": f"VLM error: {e}", "method": "vlm_error"}
+
+
+def color_analysis_check(frame_paths: list[str], prompt: str) -> dict:
+    """Prompt-specific color analysis for semantic content checking.
+
+    This is a fallback when no VLM is available. It checks whether the
+    video frames have color characteristics consistent with the prompt.
+
+    For sunset/sky prompts: checks for warm colors (orange, red, purple,
+    yellow) and brightness gradients.
+
+    For other prompts: checks that frames are not monochrome and have
+    reasonable color diversity.
+
+    Returns {"pass": bool, "detail": str, "method": "color_analysis"}.
     """
     if not frame_paths:
-        return {
-            "frames_analyzed": 0,
-            "is_black_or_solid": True,
-            "has_motion": False,
-            "visual_diversity": 0.0,
-            "reason": "no frames extracted",
-        }
+        return {"pass": False, "detail": "no frames extracted", "method": "color_analysis"}
 
     try:
         import numpy as np
         from PIL import Image
     except ImportError:
-        return {
-            "frames_analyzed": len(frame_paths),
-            "is_black_or_solid": False,
-            "has_motion": True,
-            "visual_diversity": 1.0,
-            "reason": "numpy/PIL not available — cannot analyze content",
-        }
+        return {"pass": False, "detail": "numpy/PIL not available", "method": "color_analysis"}
 
     pixel_data = []
     for fp in frame_paths:
@@ -157,21 +177,20 @@ def analyze_frame_content(frame_paths: list[str]) -> dict:
             pass
 
     if not pixel_data:
-        return {
-            "frames_analyzed": 0,
-            "is_black_or_solid": True,
-            "has_motion": False,
-            "visual_diversity": 0.0,
-            "reason": "could not read any frames",
-        }
+        return {"pass": False, "detail": "could not read frames", "method": "color_analysis"}
+
+    prompt_lower = prompt.lower()
 
     # Check for black/solid color
     first_frame = pixel_data[0]
     mean_brightness = float(first_frame.mean())
     std_brightness = float(first_frame.std())
+    is_black = mean_brightness < 10
+    is_solid = std_brightness < 5
 
-    is_black = mean_brightness < 10  # nearly pure black
-    is_solid_color = std_brightness < 5  # very low variation within a frame
+    if is_black or is_solid:
+        return {"pass": False, "detail": f"black_or_solid (brightness={mean_brightness:.1f}, std={std_brightness:.1f})",
+                "method": "color_analysis"}
 
     # Check for motion (variation between frames)
     if len(pixel_data) >= 2:
@@ -180,31 +199,106 @@ def analyze_frame_content(frame_paths: list[str]) -> dict:
             diff = float(np.abs(pixel_data[i].astype(float) - pixel_data[0].astype(float)).mean())
             frame_diffs.append(diff)
         avg_diff = sum(frame_diffs) / len(frame_diffs) if frame_diffs else 0.0
-        has_motion = avg_diff > 2.0  # threshold for detectable motion
-        visual_diversity = min(avg_diff / 20.0, 1.0)  # normalize to [0, 1]
     else:
         avg_diff = 0.0
-        has_motion = False
-        visual_diversity = 0.0
 
-    return {
-        "frames_analyzed": len(pixel_data),
-        "mean_brightness": round(mean_brightness, 2),
-        "std_brightness": round(std_brightness, 2),
-        "avg_frame_diff": round(avg_diff, 2),
-        "is_black_or_solid": is_black or is_solid_color,
-        "has_motion": has_motion,
-        "visual_diversity": round(visual_diversity, 3),
-        "reason": "",
-    }
+    if avg_diff < 2.0:
+        return {"pass": False, "detail": f"no motion (avg_frame_diff={avg_diff:.2f})", "method": "color_analysis"}
+
+    # Prompt-specific color checks
+    # Sunset/sky prompt: check for warm colors
+    if "sunset" in prompt_lower or "sky" in prompt_lower or "horizon" in prompt_lower:
+        warm_pixel_count = 0
+        total_pixels = 0
+        for arr in pixel_data:
+            r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
+            # Warm colors: R > G > B with R > 80
+            warm_mask = (r > g) & (g > b) & (r > 80)
+            warm_pixel_count += int(warm_mask.sum())
+            total_pixels += arr.shape[0] * arr.shape[1]
+        warm_ratio = warm_pixel_count / total_pixels if total_pixels > 0 else 0.0
+
+        if warm_ratio < 0.10:
+            return {"pass": False,
+                    "detail": f"sunset prompt but warm_color_ratio={warm_ratio:.3f} (threshold=0.10)",
+                    "method": "color_analysis"}
+
+        return {"pass": True,
+                "detail": f"warm_color_ratio={warm_ratio:.3f}, motion={avg_diff:.2f}, brightness={mean_brightness:.1f}",
+                "method": "color_analysis"}
+
+    # Generic: check color diversity
+    color_diversity = float(std_brightness) / 128.0
+    if color_diversity < 0.15:
+        return {"pass": False, "detail": f"low color diversity (std/128={color_diversity:.3f})",
+                "method": "color_analysis"}
+
+    return {"pass": True,
+            "detail": f"color_diversity={color_diversity:.3f}, motion={avg_diff:.2f}",
+            "method": "color_analysis"}
 
 
-def run_deterministic_checks(results_dir: Path, rubric: dict) -> dict:
-    """Run deterministic format and process checks from the case rubric.
+def check_semantic_content(video_path: Path, prompt: str) -> dict:
+    """Check if video content matches the prompt.
 
-    These checks use ffprobe and file inspection — they do NOT require
-    any LLM or external API.
+    Tries VLM first (if API key available), falls back to color analysis.
+    Never skips — a SMPTE test pattern will FAIL.
     """
+    frames = extract_frames(video_path, num_frames=10)
+
+    # Try VLM first
+    vlm_result = vlm_check_prompt_adherence(frames, prompt)
+    if vlm_result["method"].startswith("vlm") and vlm_result["method"] != "vlm_unavailable":
+        return vlm_result
+
+    # Fall back to color analysis
+    return color_analysis_check(frames, prompt)
+
+
+def count_intermediate_artifacts(results_dir: Path, expected_output: str = "final.mp4") -> list[str]:
+    """Recursively find intermediate artifacts in workspace/output.
+
+    VideoWeaver creates nested directories like:
+    output/<session_key>/videos/clip01.mp4
+    output/<session_key>/images/key.png
+
+    This function uses rglob to find ALL files, not just top-level.
+    """
+    ws_output = results_dir / "workspace" / "output"
+    if not ws_output.is_dir():
+        return []
+
+    intermediates = []
+    for f in ws_output.rglob("*"):
+        if f.is_file() and f.name != expected_output and f.name != ".DS_Store":
+            intermediates.append(str(f.relative_to(ws_output)))
+    return intermediates
+
+
+def count_tool_calls(results_dir: Path) -> int:
+    """Count tool_call entries in trajectory."""
+    traj_path = results_dir / "agent" / "normalized_trajectory.json"
+    if not traj_path.is_file():
+        traj_path = results_dir / "agent" / "trajectory.json"
+    if not traj_path.is_file():
+        return 0
+
+    try:
+        with open(traj_path) as f:
+            traj = json.load(f)
+        if isinstance(traj, list):
+            return sum(1 for e in traj if isinstance(e, dict) and e.get("type") == "tool_call")
+    except Exception:
+        pass
+    return 0
+
+
+def run_checks(results_dir: Path, rubric: dict, case_dir: Path) -> dict:
+    """Run all checks and return detailed results."""
+    output_dir = results_dir / "output"
+    final_mp4 = output_dir / "final.mp4"
+    original_prompt = find_original_prompt(case_dir)
+
     items = rubric.get("items", [])
     results = {
         "total_items": len(items),
@@ -214,37 +308,23 @@ def run_deterministic_checks(results_dir: Path, rubric: dict) -> dict:
         "items": [],
     }
 
-    output_dir = results_dir / "output"
-    final_mp4 = output_dir / "final.mp4"
-
     for item in items:
         item_id = item.get("id", "unknown")
         judge = item.get("judge", "deterministic")
         criterion = item.get("criterion", "")
         check_desc = item.get("check", "")
 
-        # Skip only truly optional items (vlm_optional with no API key)
-        # deterministic_optional items MUST run — they are the hard gate
-        if judge == "vlm_optional":
-            results["skipped"] += 1
-            results["items"].append({
-                "id": item_id,
-                "status": "skipped",
-                "judge": judge,
-                "criterion": criterion,
-            })
-            continue
-
+        # NO MORE vlm_optional SKIP — everything runs
         passed = False
         detail = ""
 
         # F-01: file exists
-        if "file_exists" in check_desc or "exists" in criterion.lower():
+        if item_id == "F-01" or "file_exists" in check_desc:
             passed = final_mp4.is_file()
             detail = f"final.mp4 exists: {passed}"
 
         # F-02: MP4 + H.264
-        elif "h264" in check_desc.lower() or "codec" in criterion.lower():
+        elif item_id == "F-02" or "h264" in check_desc.lower():
             if final_mp4.is_file():
                 probe = probe_video(final_mp4)
                 fmt = probe.get("format", {}).get("format_name", "")
@@ -258,7 +338,7 @@ def run_deterministic_checks(results_dir: Path, rubric: dict) -> dict:
                 detail = "final.mp4 not found"
 
         # F-03: resolution
-        elif "resolution" in check_desc.lower() or "1280" in check_desc:
+        elif item_id == "F-03" or "resolution" in check_desc.lower():
             if final_mp4.is_file():
                 probe = probe_video(final_mp4)
                 for s in probe.get("streams", []):
@@ -272,7 +352,7 @@ def run_deterministic_checks(results_dir: Path, rubric: dict) -> dict:
                 detail = "final.mp4 not found"
 
         # F-04: duration
-        elif "duration" in check_desc.lower() or "15" in check_desc:
+        elif item_id == "F-04" or "duration" in check_desc.lower():
             if final_mp4.is_file():
                 probe = probe_video(final_mp4)
                 dur = float(probe.get("format", {}).get("duration", 0))
@@ -281,73 +361,64 @@ def run_deterministic_checks(results_dir: Path, rubric: dict) -> dict:
             else:
                 detail = "final.mp4 not found"
 
-        # C-01: content check (sunset scene) — now runs deterministic analysis
-        elif item_id == "C-01" or ("sunset" in criterion.lower() and "scene" in criterion.lower()):
-            if final_mp4.is_file():
-                frames = extract_frames_for_analysis(final_mp4, num_frames=10)
-                analysis = analyze_frame_content(frames)
-                # Hard gate: black/solid color video must FAIL
-                passed = not analysis["is_black_or_solid"] and analysis["has_motion"]
-                detail = f"black_or_solid={analysis['is_black_or_solid']}, " \
-                         f"motion={analysis['has_motion']}, " \
-                         f"diversity={analysis['visual_diversity']}, " \
-                         f"brightness={analysis.get('mean_brightness', 'N/A')}"
-            else:
+        # C-01: SEMANTIC content check (the real gate!)
+        elif item_id == "C-01":
+            if final_mp4.is_file() and original_prompt:
+                sem_result = check_semantic_content(final_mp4, original_prompt)
+                passed = sem_result["pass"]
+                detail = f"method={sem_result['method']}, {sem_result['detail']}"
+            elif not final_mp4.is_file():
                 passed = False
                 detail = "final.mp4 not found"
+            else:
+                passed = False
+                detail = "original prompt not found — cannot do semantic check"
 
         # C-02: multiple distinct shots (scene detection)
-        elif item_id == "C-02" or ("multiple" in criterion.lower() and "shot" in criterion.lower()):
+        elif item_id == "C-02":
             if final_mp4.is_file():
-                # Use scene detection if available, otherwise frame analysis
                 try:
                     result = subprocess.run(
                         ["scenedetect", "-i", str(final_mp4), "detect-content", "list-scenes"],
                         capture_output=True, text=True, timeout=60,
                     )
-                    # Count detected scenes from output
                     scene_count = result.stdout.count("Scene") // 2
                     passed = scene_count >= 2
                     detail = f"detected_scenes={scene_count}"
                 except Exception:
                     # Fallback: frame analysis
-                    frames = extract_frames_for_analysis(final_mp4, num_frames=15)
-                    analysis = analyze_frame_content(frames)
-                    passed = analysis["visual_diversity"] > 0.1 and analysis["has_motion"]
-                    detail = f"fallback: diversity={analysis['visual_diversity']}, motion={analysis['has_motion']}"
+                    frames = extract_frames(final_mp4, num_frames=15)
+                    if len(frames) >= 2:
+                        try:
+                            import numpy as np
+                            from PIL import Image
+                            pixel_data = [np.array(Image.open(fp).convert("RGB")) for fp in frames]
+                            diffs = [float(np.abs(pixel_data[i].astype(float) - pixel_data[0].astype(float)).mean())
+                                     for i in range(1, len(pixel_data))]
+                            avg_diff = sum(diffs) / len(diffs) if diffs else 0
+                            passed = avg_diff > 5.0
+                            detail = f"fallback: avg_frame_diff={avg_diff:.2f}"
+                        except Exception:
+                            passed = False
+                            detail = "fallback analysis failed"
+                    else:
+                        passed = False
+                        detail = "not enough frames for analysis"
             else:
                 passed = False
                 detail = "final.mp4 not found"
 
-        # P-01: intermediate artifacts
-        elif "intermediate" in criterion.lower():
-            ws_output = results_dir / "workspace" / "output"
-            if ws_output.is_dir():
-                files = [f for f in ws_output.iterdir() if f.is_file() and f.name != "final.mp4" and f.name != ".DS_Store"]
-                passed = len(files) > 0
-                detail = f"{len(files)} intermediate files found"
-            else:
-                detail = "no workspace/output directory"
+        # P-01: intermediate artifacts (recursive!)
+        elif item_id == "P-01" or "intermediate" in criterion.lower():
+            intermediates = count_intermediate_artifacts(results_dir)
+            passed = len(intermediates) >= 2  # threshold raised to >=2
+            detail = f"{len(intermediates)} intermediate files found (recursively)"
 
-        # P-02: tool calls in trajectory
-        elif "tool_call" in check_desc.lower() or "trajectory" in check_desc.lower():
-            traj_path = results_dir / "agent" / "normalized_trajectory.json"
-            if not traj_path.is_file():
-                traj_path = results_dir / "agent" / "trajectory.json"
-            if traj_path.is_file():
-                try:
-                    with open(traj_path) as f:
-                        traj = json.load(f)
-                    if isinstance(traj, list):
-                        tool_calls = sum(1 for e in traj if isinstance(e, dict) and e.get("type") == "tool_call")
-                        passed = tool_calls > 0
-                        detail = f"{tool_calls} tool calls found"
-                    else:
-                        detail = "trajectory is not a list"
-                except Exception as e:
-                    detail = f"parse error: {e}"
-            else:
-                detail = "trajectory.json not found"
+        # P-02: tool calls in trajectory (>=2 required)
+        elif item_id == "P-02" or "tool_call" in check_desc.lower():
+            tool_calls = count_tool_calls(results_dir)
+            passed = tool_calls >= 2  # threshold raised to >=2
+            detail = f"{tool_calls} tool calls found (threshold: >=2)"
 
         else:
             results["skipped"] += 1
@@ -368,25 +439,25 @@ def run_deterministic_checks(results_dir: Path, rubric: dict) -> dict:
         results["items"].append({
             "id": item_id,
             "status": "pass" if passed else "fail",
-            "judge": judge,
+            "judge": "deterministic",
             "criterion": criterion,
             "detail": detail,
         })
 
     total_scoreable = results["passed"] + results["failed"]
     results["pass_rate"] = results["passed"] / total_scoreable if total_scoreable > 0 else 0.0
-
     return results
 
 
 def evaluate(results_dir: Path, case_dir: Path | None = None) -> dict:
     """Run the GEN verifier and return standardized results.
 
-    Hard gate design:
-    - format_pass = ALL F-* checks pass
-    - content_pass = ALL C-* checks pass (black video MUST FAIL)
-    - process_pass = ALL P-* checks pass
-    - Overall pass = format_pass AND content_pass AND process_pass
+    Hard gate design (revised):
+    - format_pass = ALL F-* checks pass (rate == 1.0)
+    - semantic_pass = C-01 passes (VLM or color analysis — NEVER skipped)
+    - shot_diversity_pass = C-02 passes
+    - process_pass = ALL P-* checks pass (>=2 tool calls, >=2 intermediates)
+    - Overall pass = format_pass AND semantic_pass AND shot_diversity_pass AND process_pass
     """
     result = {
         "benchmark": "multi-benchmark-derived",
@@ -401,7 +472,6 @@ def evaluate(results_dir: Path, case_dir: Path | None = None) -> dict:
         "status": "unknown",
     }
 
-    # Locate case rubric
     if case_dir is None:
         case_dir = ROOT / "cases" / "gen" / "gen_case_001"
 
@@ -412,70 +482,69 @@ def evaluate(results_dir: Path, case_dir: Path | None = None) -> dict:
         return result
 
     result["case_id"] = rubric.get("case_id", "unknown")
-    result["details"]["rubric_source"] = rubric.get("rubric_source", "project-defined")
-    result["details"]["rubric_basis"] = rubric.get("rubric_basis", [])
 
-    # 1. Run deterministic checks (always — including content checks)
-    det_results = run_deterministic_checks(results_dir, rubric)
-    result["details"]["deterministic_checks"] = det_results
+    # Run all checks
+    det_results = run_checks(results_dir, rubric, case_dir)
+    result["details"]["checks"] = det_results
 
-    # 2. Check VideoWeaver eval availability (optional)
+    # Check VideoWeaver eval availability (optional)
     eval_info = find_video_weaver_eval()
     result["details"]["videoweaver_eval"] = {
         "available": eval_info["available"],
         "note": eval_info["note"],
     }
 
-    # 3. Compute pillar pass rates
+    # Compute pillar pass rates
     format_items = [i for i in det_results["items"] if i["id"].startswith("F-")]
-    content_items = [i for i in det_results["items"] if i["id"].startswith("C-")]
+    semantic_items = [i for i in det_results["items"] if i["id"] == "C-01"]
+    shot_items = [i for i in det_results["items"] if i["id"] == "C-02"]
     process_items = [i for i in det_results["items"] if i["id"].startswith("P-")]
 
-    def pass_rate(items):
+    def all_pass(items):
         scored = [i for i in items if i["status"] in ("pass", "fail")]
-        if not scored:
-            return 0.0
-        return sum(1 for i in scored if i["status"] == "pass") / len(scored)
+        return len(scored) > 0 and all(i["status"] == "pass" for i in scored)
 
-    format_rate = pass_rate(format_items)
-    content_rate = pass_rate(content_items)
-    process_rate = pass_rate(process_items)
+    format_pass = all_pass(format_items)
+    semantic_pass = all_pass(semantic_items)
+    shot_diversity_pass = all_pass(shot_items)
+    process_pass = all_pass(process_items)
 
-    # Hard gate: ALL pillars must pass (not just weighted average)
-    format_pass = format_rate >= 1.0 and len(format_items) > 0
-    content_pass = content_rate >= 0.5 and len(content_items) > 0  # at least half of content checks
-    process_pass = process_rate >= 0.5 and len(process_items) > 0  # at least half of process checks
-
-    result["details"]["pillar_scores"] = {
-        "format": format_rate,
-        "content": content_rate,
-        "process": process_rate,
-    }
     result["details"]["hard_gates"] = {
         "format_pass": format_pass,
-        "content_pass": content_pass,
+        "semantic_prompt_pass": semantic_pass,
+        "shot_diversity_pass": shot_diversity_pass,
         "process_pass": process_pass,
     }
 
-    # Scoring: weighted average for reward, but pass requires hard gates
-    scoring = rubric.get("scoring", {})
-    format_weight = scoring.get("format_weight", 0.4)
-    content_weight = scoring.get("content_weight", 0.3)
-    process_weight = scoring.get("process_weight", 0.3)
+    # Scoring (informational only — pass requires all hard gates)
+    total = det_results["passed"] + det_results["failed"]
+    result["reward"] = det_results["passed"] / total if total > 0 else 0.0
 
-    result["reward"] = format_weight * format_rate + content_weight * content_rate + process_weight * process_rate
-
-    # PASS requires ALL hard gates (black video with format=1.0 but content=0.0 must FAIL)
-    result["pass"] = format_pass and content_pass and process_pass
+    # PASS requires ALL hard gates
+    result["pass"] = format_pass and semantic_pass and shot_diversity_pass and process_pass
     result["status"] = "evaluated"
 
     return result
 
 
+def find_video_weaver_eval(upstream_root: Path | None = None) -> dict:
+    """Locate VideoWeaver evaluation code in the upstream freeze."""
+    if upstream_root is None:
+        upstream_root = ROOT / "upstream" / "videoweaver"
+    eval_prm = upstream_root / "AutomaticSkillOptimization" / "evaluation_PRM"
+    eval_orm = upstream_root / "AutomaticSkillOptimization" / "evaluation_ORM"
+    return {
+        "evaluation_PRM_path": str(eval_prm) if eval_prm.is_dir() else None,
+        "evaluation_ORM_path": str(eval_orm) if eval_orm.is_dir() else None,
+        "available": eval_prm.is_dir() or eval_orm.is_dir(),
+        "note": "VideoWeaver eval code not frozen. Only project-defined rubric runs." if not (eval_prm.is_dir() or eval_orm.is_dir()) else "Available",
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="GEN verifier (multi-benchmark-derived)")
     parser.add_argument("--results", required=True, help="Path to results/<run-id>/ directory")
-    parser.add_argument("--case-dir", default=None, help="Path to the case directory (default: cases/gen/gen_case_001)")
+    parser.add_argument("--case-dir", default=None, help="Path to the case directory")
     args = parser.parse_args()
 
     results_dir = Path(args.results).resolve()
@@ -494,12 +563,11 @@ def main():
     print(f"  status:     {result['status']}")
     print(f"  reward:     {result['reward']:.2f}")
     print(f"  pass:       {result['pass']}")
-    print(f"  rubric:     {result.get('rubric_source', 'unknown')}")
     gates = result.get("details", {}).get("hard_gates", {})
     for gate_name, gate_val in gates.items():
         print(f"  gate {gate_name}: {'PASS' if gate_val else 'FAIL'}")
-    if result["status"] != "evaluated":
-        print(f"  reason:     {result['details'].get('reason', 'unknown')}")
+    for item in result.get("details", {}).get("checks", {}).get("items", []):
+        print(f"  {item['status'].upper()}: {item['id']} — {item.get('detail', '')}")
     print(f"  output:     {output_path}")
 
     sys.exit(0 if result["pass"] else 1)

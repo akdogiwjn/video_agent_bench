@@ -19,7 +19,7 @@ import shutil
 from pathlib import Path
 
 
-WORKSPACE_DIRS = ["task", "materials", "references", "skills", "output", "logs"]
+WORKSPACE_DIRS = ["task", "materials", "references", "skills", "output", "logs", "tools"]
 
 # Skills that are implicitly required by other skills.
 # Discovered by scanning VideoWeaver skill source code for cross-references
@@ -86,6 +86,16 @@ def create_workspace(root: Path) -> Path:
     root.mkdir(parents=True, exist_ok=True)
     for d in WORKSPACE_DIRS:
         (root / d).mkdir(exist_ok=True)
+
+    # Copy thin capability adapters (VLM, ASR, inspect_media, extract_frames)
+    # into workspace/tools/ so the agent can use them.
+    tools_src = Path(__file__).resolve().parent.parent / "tools" / "media"
+    tools_dst = root / "tools"
+    if tools_src.is_dir():
+        for f in tools_src.iterdir():
+            if f.is_file() and f.suffix == ".py" and f.name != "__init__.py":
+                shutil.copy2(f, tools_dst / f.name)
+
     return root
 
 

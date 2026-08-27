@@ -69,12 +69,14 @@ def check_milestone5():
             print("  FAIL: runner does not persist OpenClaw state")
             ok = False
 
-    # Check run_case.py calls verifier
+    # Check run_case.py calls V0→V1→V2 pipeline
     run_case = ROOT / "runner/run_case.py"
     if run_case.is_file():
         content = run_case.read_text()
-        if "run_verifier" in content and "deferred" not in content:
-            print("  OK: runner calls verifier (not deferred)")
+        if "run_verifier_pipeline" in content and "v0_provenance" in content and "v1_execution" in content and "v2_benchmark" in content:
+            print("  OK: runner calls V0→V1→V2 verifier pipeline")
+        elif "run_verifier" in content and "deferred" not in content:
+            print("  OK: runner calls verifier (single stage)")
         else:
             print("  FAIL: runner does not call verifier")
             ok = False
@@ -266,10 +268,10 @@ def check_milestone8():
     gen_eval = ROOT / "verifier/gen/evaluate.py"
     if gen_eval.is_file():
         content = gen_eval.read_text()
-        if "hard_gates" in content and "is_black_or_solid" in content and "format_pass and content_pass and process_pass" in content:
-            print("  OK: GEN verifier has hard gates (black video must FAIL)")
+        if "semantic_prompt_pass" in content and "check_semantic_content" in content and "format_pass and semantic_pass" in content:
+            print("  OK: GEN verifier has semantic hard gate (prompt adherence, never skipped)")
         else:
-            print("  FAIL: GEN verifier missing hard gates")
+            print("  FAIL: GEN verifier missing semantic hard gate")
             ok = False
 
     # Check verifier isolation
