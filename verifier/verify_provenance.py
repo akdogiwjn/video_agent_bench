@@ -301,6 +301,34 @@ def verify_provenance(results_dir: Path) -> dict:
     agent_model = run_manifest.get("agent_model", "")
     checks["agent_model"] = {"value": agent_model, "pass": bool(agent_model)}
 
+    # --- 13. tools_sha256 verified against frozen repo tools ---
+    tools_sha = run_manifest.get("tools_sha256", {})
+    if tools_sha:
+        # Verify each tool file hash matches the repo source
+        tools_src = ROOT / "tools" / "media"
+        matched = 0
+        mismatched = 0
+        for rel, sha in tools_sha.items():
+            src_file = tools_src / Path(rel).name
+            if src_file.is_file():
+                actual = sha256_file(src_file)
+                if actual == sha:
+                    matched += 1
+                else:
+                    mismatched += 1
+            else:
+                mismatched += 1
+        checks["tools_sha256"] = {
+            "value": f"{len(tools_sha)} files ({matched} matched, {mismatched} mismatched)",
+            "expected": f"match against {tools_src}",
+            "pass": mismatched == 0,
+        }
+    else:
+        checks["tools_sha256"] = {
+            "value": "empty",
+            "pass": True,  # No tools copied (e.g. EDIT without tools)
+        }
+
     for check in checks.values():
         if not check["pass"]:
             passed = False

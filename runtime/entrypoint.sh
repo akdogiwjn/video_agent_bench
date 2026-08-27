@@ -5,20 +5,19 @@ set -Eeuo pipefail
 # entrypoint.sh — launches OpenClaw with the task file.
 #
 # This script does ONLY infrastructure:
-#   - configure OpenClaw (openclaw.json, exec-approvals.json, workspace)
+#   - configure OpenClaw (openclaw.json, exec-approvals.json, workspace, tools)
 #   - read the task file path from $1
 #   - invoke openclaw agent with the configured model and timeout
 #   - export trajectory after agent completes (even on failure)
 #
-# It must NOT contain any GEN/EDIT business logic. The agent decides
-# what tools to call, what order to call them, and how to produce the
-# final artifact. Runner post-task repair is forbidden.
+# It must NOT contain any GEN/EDIT business logic.
 # ---------------------------------------------------------------------------
 
 TASK_FILE="${1:?Usage: entrypoint.sh <task_file>}"
 AGENT_MODEL="${AGENT_MODEL:?AGENT_MODEL must be set}"
 TIMEOUT="${TIMEOUT:-3600}"
 SESSION_KEY="${SESSION_KEY:-bench-$(date +%s)}"
+CASE_TYPE="${CASE_TYPE:-gen}"
 
 if [ ! -f "$TASK_FILE" ]; then
     echo "ERROR: task file not found: $TASK_FILE" >&2
@@ -31,7 +30,13 @@ TASK_MESSAGE="$(cat "$TASK_FILE")"
 OPENCLAW_HOME="/root/.openclaw"
 mkdir -p "$OPENCLAW_HOME"
 
-# openclaw.json — skill loader + environment + workspace
+# --- Build tool policy based on case type ---
+# Both GEN and EDIT need: filesystem (read/write), exec (bash/python), skills
+# Both should deny: web, browser, cron, sessions_spawn, built-in media generation
+# (media generation goes through VideoWeaver skills, not OpenClaw built-ins)
+TOOL_DENY='"browser","canvas","cron","sessions_spawn","sessions_yield","subagents","web_search","x_search","web_fetch","image_generate","music_generate","video_generate","tts","message","heartbeat_respond","nodes","computer","dashboard","terminal","portal","show_widget","skill_workshop","suggest_task","dismiss_task"'
+
+# openclaw.json — skill loader + environment + workspace + tool policy
 cat > "$OPENCLAW_HOME/openclaw.json" <<OCJSON
 {
   "skills": {
@@ -49,14 +54,18 @@ cat > "$OPENCLAW_HOME/openclaw.json" <<OCJSON
     "vars": {},
     "OUTPUT_DIR": "/workspace/output"
   },
+  "tools": {
+    "profile": "coding",
+    "deny": [$TOOL_DENY]
+  },
   "agents": {
     "defaults": {
       "workspace": "/workspace",
-      "timeoutSeconds": ${TIMEOUT},
+      "timeoutSeconds": $TIMEOUT,
       "verboseDefault": "full",
       "maxConcurrent": 100,
       "subagents": {
-        "maxConcurrent": 100
+        "maxConcurrent": 0
       }
     },
     "list": [
@@ -88,12 +97,13 @@ echo "  task_file:    $TASK_FILE"
 echo "  model:        $AGENT_MODEL"
 echo "  timeout:      $TIMEOUT"
 echo "  session_key:  $SESSION_KEY"
+echo "  case_type:    $CASE_TYPE"
 echo "  workspace:    /workspace"
+echo "  tools.deny:   browser,web,cron,sessions_spawn,builtin_media,..."
 echo "==================================="
 
 # --- Run agent ---
 # Use set +e so that agent failure does NOT prevent trajectory export.
-# Trajectory is most critical when the agent fails or times out.
 set +e
 openclaw agent \
     --local \
@@ -113,6 +123,7 @@ mkdir -p /workspace/logs
 
 set +e
 openclaw sessions export-trajectory \
+    --agent main \
     --session-key "$SESSION_KEY" \
     --workspace /workspace \
     --output benchmark-trajectory \
@@ -122,12 +133,10 @@ set -e
 
 if [ $EXPORT_EXIT_CODE -ne 0 ]; then
     echo "WARNING: trajectory export failed (exit=$EXPORT_EXIT_CODE)" >&2
-    echo "  Log:" >&2
     cat /workspace/logs/trajectory_export.log >&2 || true
 fi
 
 # The export lands in <workspace>/.openclaw/trajectory-exports/<output>/
-# NOT in /root/.openclaw/ (the --workspace flag controls the export location)
 EXPORT_DIR="/workspace/.openclaw/trajectory-exports/benchmark-trajectory"
 if [ -d "$EXPORT_DIR" ]; then
     mkdir -p /workspace/logs/trajectory_bundle
@@ -135,7 +144,7 @@ if [ -d "$EXPORT_DIR" ]; then
     echo "  Trajectory bundle copied to /workspace/logs/trajectory_bundle/"
 else
     echo "WARNING: export directory not found at $EXPORT_DIR" >&2
-    # Fallback: check /root/.openclaw/ in case of older OpenClaw versions
+    # Fallback: check /root/.openclaw/ for older OpenClaw versions
     FALLBACK_DIR="$OPENCLAW_HOME/trajectory-exports/benchmark-trajectory"
     if [ -d "$FALLBACK_DIR" ]; then
         mkdir -p /workspace/logs/trajectory_bundle

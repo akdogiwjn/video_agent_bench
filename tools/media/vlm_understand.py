@@ -34,12 +34,16 @@ def call_vlm(image_path: str | None, video_path: str | None, prompt: str, model:
     if not api_key:
         return "ERROR: No API key set (ARK_API_KEY or OPENAI_API_KEY)"
 
-    base_url = os.environ.get("ARK_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3")
-    if not os.environ.get("ARK_API_KEY"):
+    use_ark = bool(os.environ.get("ARK_API_KEY"))
+    if use_ark:
+        base_url = os.environ.get("ARK_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3")
+        default_vlm = "doubao-1-5-vision-pro-32k-250115"
+    else:
         base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        default_vlm = "gpt-4o-mini"
 
     client = OpenAI(api_key=api_key, base_url=base_url)
-    vlm_model = model or os.environ.get("VLM_MODEL", "doubao-1-5-vision-pro-32k-250115")
+    vlm_model = model or os.environ.get("VLM_MODEL", default_vlm)
 
     content = [{"type": "text", "text": prompt}]
 

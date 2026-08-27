@@ -54,6 +54,7 @@ def run_openclaw_in_docker(
     timeout: int = 3600,
     env_vars: dict[str, str] | None = None,
     openclaw_state_dir: Path | None = None,
+    case_type: str = "gen",
 ) -> dict:
     """Run OpenClaw agent inside a Docker container.
 
@@ -92,6 +93,7 @@ def run_openclaw_in_docker(
         "OUTPUT_DIR": "/workspace/output",
         "SESSION_KEY": session_key,
         "OPENCLAW_WORKSPACE_DIR": "/workspace",
+        "CASE_TYPE": case_type,
     }
     if env_vars:
         env.update(env_vars)

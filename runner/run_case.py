@@ -418,6 +418,7 @@ def run_case(args):
             timeout=args.timeout,
             env_vars=env_vars,
             openclaw_state_dir=openclaw_state_dir,
+            case_type=case_type,
         )
 
     finished_at = now_iso()
