@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
-"""DashScope Wan Video adapter — video generation via DashScope API.
+"""DashScope Wan Video adapter — video generation via DashScope native API.
 
-Uses the DashScope async task API for video generation (Wan models).
-Video generation is always async: submit → poll → download.
+Uses the DashScope native async task API for Wan video generation.
+Endpoint: /api/v1/services/aigc/video-generation/video-synthesis
 
 Environment:
     DASHSCOPE_API_KEY — required
-    VIDEO_GEN_MODEL — required (e.g. wan-style-anime-v1.0)
+    VIDEO_GEN_MODEL — required (e.g. wan3.0-video, wan2.7-t2v)
+    DASHSCOPE_NATIVE_BASE_URL — optional (default: https://dashscope.aliyuncs.com/api/v1)
 
-The adapter handles:
-    - authentication
-    - request submission (text2video)
-    - task polling
-    - result download
-    - error normalization
+Wan2.7/3.0 Video request:
+    "parameters": {
+        "resolution": "720P",
+        "ratio": "16:9",
+        "duration": 5
+    }
 
-It does NOT handle:
-    - prompt rewriting
-    - retry strategy
-    - storyboard planning
+Response on success:
+    "output": {
+        "task_status": "SUCCEEDED",
+        "video_url": "..."
+    }
 """
 import os
 import sys
@@ -30,7 +32,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.providers.dashscope_client import get_dashscope_api_key, get_dashscope_base_url
+from tools.providers.dashscope_client import get_dashscope_api_key, get_native_base_url
 
 
 def generate_video(prompt: str, output_path: str, model: str | None = None,
@@ -42,7 +44,7 @@ def generate_video(prompt: str, output_path: str, model: str | None = None,
         prompt: Video generation prompt
         output_path: Where to save the generated MP4
         model: Model name (falls back to VIDEO_GEN_MODEL env var)
-        size: Video resolution (e.g. "1280*720", "720*1280")
+        size: Video size (parsed into resolution + ratio)
         duration: Video duration in seconds
         timeout: Maximum polling time in seconds
 
@@ -59,8 +61,7 @@ def generate_video(prompt: str, output_path: str, model: str | None = None,
         return {"success": False, "error": "VIDEO_GEN_MODEL is not set",
                 "output_path": "", "task_id": ""}
 
-    base_url = get_dashscope_base_url().rstrip("/")
-    # DashScope video generation async task API
+    base_url = get_native_base_url().rstrip("/")
     submit_url = f"{base_url}/services/aigc/video-generation/video-synthesis"
 
     headers = {
@@ -69,14 +70,34 @@ def generate_video(prompt: str, output_path: str, model: str | None = None,
         "X-DashScope-Async": "enable",
     }
 
+    # Parse size into resolution and ratio for Wan2.7/3.0 API
+    # e.g. "1280*720" → resolution="720P", ratio="16:9"
+    w, h = 1280, 720
+    try:
+        parts = size.replace("×", "*").split("*")
+        w, h = int(parts[0]), int(parts[1])
+    except Exception:
+        pass
+
+    if min(w, h) >= 1080:
+        resolution = "1080P"
+    else:
+        resolution = "720P"
+
+    # Compute ratio
+    from math import gcd
+    g = gcd(w, h)
+    ratio = f"{w//g}:{h//g}"
+
     payload = {
         "model": video_model,
         "input": {
             "prompt": prompt,
         },
         "parameters": {
-            "size": size,
-            "duration": duration,
+            "resolution": resolution,
+            "ratio": ratio,
+            "duration": int(duration) if str(duration).isdigit() else 5,
         },
     }
 
@@ -98,7 +119,7 @@ def generate_video(prompt: str, output_path: str, model: str | None = None,
         return {"success": False, "error": f"No task_id in response: {resp_data}",
                 "output_path": "", "task_id": ""}
 
-    # Poll for result
+    # Poll for result using native task API
     task_url = f"{base_url}/tasks/{task_id}"
     poll_headers = {"Authorization": f"Bearer {api_key}"}
 
@@ -111,31 +132,36 @@ def generate_video(prompt: str, output_path: str, model: str | None = None,
         except Exception:
             continue
 
-        status = poll_data.get("output", {}).get("task_status", "")
+        output = poll_data.get("output", {})
+        status = output.get("task_status", "")
         if status == "SUCCEEDED":
-            results = poll_data.get("output", {}).get("video_result", [])
-            if not results:
-                results = poll_data.get("output", {}).get("results", [])
-            if results:
-                video_url = results[0].get("url", "") if isinstance(results[0], dict) else results[0]
-                if video_url:
-                    try:
-                        video_resp = requests.get(video_url, timeout=120)
-                        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-                        with open(output_path, "wb") as f:
-                            f.write(video_resp.content)
-                        return {"success": True, "output_path": output_path,
-                                "error": "", "task_id": task_id}
-                    except Exception as e:
-                        return {"success": False, "error": f"Download failed: {e}",
-                                "output_path": "", "task_id": task_id}
-            return {"success": False, "error": "No video URL in results",
+            # Wan2.7/3.0 returns video_url directly in output
+            video_url = output.get("video_url", "")
+            if not video_url:
+                # Fallback: try results array
+                results = output.get("video_result", [])
+                if not results:
+                    results = output.get("results", [])
+                if results:
+                    video_url = results[0].get("url", "") if isinstance(results[0], dict) else str(results[0])
+
+            if video_url:
+                try:
+                    video_resp = requests.get(video_url, timeout=120)
+                    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+                    with open(output_path, "wb") as f:
+                        f.write(video_resp.content)
+                    return {"success": True, "output_path": output_path,
+                            "error": "", "task_id": task_id}
+                except Exception as e:
+                    return {"success": False, "error": f"Download failed: {e}",
+                            "output_path": "", "task_id": task_id}
+            return {"success": False, "error": "No video_url in output",
                     "output_path": "", "task_id": task_id}
         elif status == "FAILED":
             return {"success": False,
-                    "error": f"Task failed: {poll_data.get('output', {}).get('message', 'unknown')}",
+                    "error": f"Task failed: {output.get('message', 'unknown')}",
                     "output_path": "", "task_id": task_id}
-        # PENDING / RUNNING → keep polling
 
     return {"success": False, "error": f"Timeout after {timeout}s",
             "output_path": "", "task_id": task_id}

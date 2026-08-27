@@ -1,24 +1,20 @@
 #!/usr/bin/env python3
-"""DashScope Wan Image adapter — image generation via DashScope API.
+"""DashScope Wan2.7 Image adapter — image generation via DashScope native API.
 
-Uses the DashScope async task API for image generation (Wan models).
-DashScope image generation is async: submit → poll → download.
+Uses the DashScope native async task API for Wan image generation.
+Endpoint: /api/v1/services/aigc/image-generation/generation
 
 Environment:
     DASHSCOPE_API_KEY — required
-    IMAGE_GEN_MODEL — required (e.g. wan-style-anime-v1.0)
+    IMAGE_GEN_MODEL — required (e.g. wan2.7-image, wan2.7-image-pro)
+    DASHSCOPE_NATIVE_BASE_URL — optional (default: https://dashscope.aliyuncs.com/api/v1)
 
-The adapter handles:
-    - authentication
-    - request submission
-    - task polling
-    - result download
-    - error normalization
-
-It does NOT handle:
-    - prompt rewriting
-    - retry strategy (caller decides)
-    - content selection
+Wan2.7 Image request uses the messages format:
+    "input": {
+        "messages": [
+            {"role": "user", "content": [{"text": "prompt"}]}
+        ]
+    }
 """
 import os
 import sys
@@ -30,12 +26,12 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.providers.dashscope_client import get_dashscope_api_key, get_dashscope_base_url
+from tools.providers.dashscope_client import get_dashscope_api_key, get_native_base_url
 
 
 def generate_image(prompt: str, output_path: str, model: str | None = None,
                    size: str = "1024*1024", timeout: int = 300) -> dict:
-    """Generate an image via DashScope Wan Image API.
+    """Generate an image via DashScope Wan2.7 Image API.
 
     Args:
         prompt: Image generation prompt
@@ -57,9 +53,8 @@ def generate_image(prompt: str, output_path: str, model: str | None = None,
         return {"success": False, "error": "IMAGE_GEN_MODEL is not set",
                 "output_path": "", "task_id": ""}
 
-    base_url = get_dashscope_base_url().rstrip("/")
-    # DashScope async task API endpoint
-    submit_url = f"{base_url}/services/aigc/text2image/image-synthesis"
+    base_url = get_native_base_url().rstrip("/")
+    submit_url = f"{base_url}/services/aigc/image-generation/generation"
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -67,10 +62,16 @@ def generate_image(prompt: str, output_path: str, model: str | None = None,
         "X-DashScope-Async": "enable",
     }
 
+    # Wan2.7 uses messages format (not plain prompt)
     payload = {
         "model": image_model,
         "input": {
-            "prompt": prompt,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [{"text": prompt}]
+                }
+            ]
         },
         "parameters": {
             "size": size,
@@ -96,7 +97,7 @@ def generate_image(prompt: str, output_path: str, model: str | None = None,
         return {"success": False, "error": f"No task_id in response: {resp_data}",
                 "output_path": "", "task_id": ""}
 
-    # Poll for result
+    # Poll for result using native task API
     task_url = f"{base_url}/tasks/{task_id}"
     poll_headers = {"Authorization": f"Bearer {api_key}"}
 
@@ -106,16 +107,17 @@ def generate_image(prompt: str, output_path: str, model: str | None = None,
         try:
             poll_resp = requests.get(task_url, headers=poll_headers, timeout=30)
             poll_data = poll_resp.json()
-        except Exception as e:
+        except Exception:
             continue
 
-        status = poll_data.get("output", {}).get("task_status", "")
+        output = poll_data.get("output", {})
+        status = output.get("task_status", "")
         if status == "SUCCEEDED":
-            results = poll_data.get("output", {}).get("results", [])
+            # Wan2.7 image results are in output.results[]
+            results = output.get("results", [])
             if results:
-                image_url = results[0].get("url", "")
+                image_url = results[0].get("url", "") if isinstance(results[0], dict) else str(results[0])
                 if image_url:
-                    # Download image
                     try:
                         img_resp = requests.get(image_url, timeout=60)
                         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -130,9 +132,8 @@ def generate_image(prompt: str, output_path: str, model: str | None = None,
                     "output_path": "", "task_id": task_id}
         elif status == "FAILED":
             return {"success": False,
-                    "error": f"Task failed: {poll_data.get('output', {}).get('message', 'unknown')}",
+                    "error": f"Task failed: {output.get('message', 'unknown')}",
                     "output_path": "", "task_id": task_id}
-        # PENDING / RUNNING → keep polling
 
     return {"success": False, "error": f"Timeout after {timeout}s",
             "output_path": "", "task_id": task_id}

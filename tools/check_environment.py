@@ -73,10 +73,10 @@ def check_edit() -> dict:
     checks.append({"name": "VLM_MODEL", "configured": bool(vlm_model),
                     "required": True, "status": vlm_model or "missing"})
 
-    # Omni (DashScope Qwen-Omni) for audio judge
+    # Omni (DashScope Qwen-Omni) for audio judge — required in adapted mode
     omni_model = os.environ.get("OMNI_MODEL", "")
     checks.append({"name": "OMNI_MODEL", "configured": bool(omni_model),
-                    "required": False, "status": omni_model or "not set (audio judge will be skipped)"})
+                    "required": True, "status": omni_model or "missing"})
 
     # EDIT verifier mode
     verifier_mode = os.environ.get("EDIT_VERIFIER_MODE", "adapted")

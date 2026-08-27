@@ -194,41 +194,54 @@ def verify_provenance(results_dir: Path) -> dict:
             "pass": True,
         }
 
-    # --- 7. skills_sha256 verified against upstream source_manifest.json ---
+    # --- 7. skills_sha256 — split into original (frozen) and adapted (runtime) ---
     skills_sha = run_manifest.get("skills_sha256", {})
-    if case_source == "multi-benchmark-derived":
-        # GEN: verify skills SHA matches frozen VideoWeaver source_manifest.json
+    if case_source == "multi-benchmark-derived" and skills_sha:
+        # GEN has both frozen VideoWeaver skills and adapted runtime_skills
         source_manifest_path = ROOT / "upstream" / "videoweaver" / "skills" / "source_manifest.json"
         source_manifest = load_json(source_manifest_path)
-        if source_manifest and "files" in source_manifest:
-            frozen_files = source_manifest["files"]
-            # Check that every skill file in run_manifest matches the frozen hash
-            matched = 0
-            mismatched = 0
-            extra_files = 0
-            for rel, sha in skills_sha.items():
-                # Skip __pycache__ and .pyc files (runtime-generated, not in frozen manifest)
-                if "__pycache__" in rel or rel.endswith(".pyc"):
-                    continue
-                if rel in frozen_files:
-                    if sha == frozen_files[rel]:
-                        matched += 1
-                    else:
-                        mismatched += 1
+        frozen_files = source_manifest.get("files", {}) if source_manifest else {}
+
+        # Adapted skills are in runtime_skills/
+        adapted_skills_root = ROOT / "runtime_skills"
+        adapted_files = {}
+        if adapted_skills_root.is_dir():
+            import os as _os
+            for dirpath, dirnames, filenames in _os.walk(adapted_skills_root):
+                dirnames[:] = sorted(d for d in dirnames if d != "__pycache__")
+                for fn in sorted(filenames):
+                    if fn in (".DS_Store",):
+                        continue
+                    full = _os.path.join(dirpath, fn)
+                    rel = _os.path.relpath(full, adapted_skills_root)
+                    adapted_files[rel] = sha256_file(full)
+
+        # Classify each skill file in the run manifest
+        matched_frozen = 0
+        matched_adapted = 0
+        mismatched = 0
+        extra = 0
+        for rel, sha in skills_sha.items():
+            if "__pycache__" in rel or rel.endswith(".pyc"):
+                continue
+            if rel in frozen_files:
+                if sha == frozen_files[rel]:
+                    matched_frozen += 1
                 else:
-                    # File not in frozen manifest — this is a provenance violation
-                    extra_files += 1
-            checks["skills_sha256"] = {
-                "value": f"{len(skills_sha)} files ({matched} matched, {mismatched} mismatched, {extra_files} extra)",
-                "expected": f"{len(frozen_files)} files in source_manifest.json",
-                "pass": len(skills_sha) > 0 and mismatched == 0 and extra_files == 0,
-            }
-        else:
-            checks["skills_sha256"] = {
-                "value": f"{len(skills_sha)} files",
-                "expected": "source_manifest.json not found",
-                "pass": len(skills_sha) > 0,
-            }
+                    mismatched += 1
+            elif rel in adapted_files:
+                if sha == adapted_files[rel]:
+                    matched_adapted += 1
+                else:
+                    mismatched += 1
+            else:
+                extra += 1
+
+        checks["skills_sha256"] = {
+            "value": f"{len(skills_sha)} files ({matched_frozen} frozen, {matched_adapted} adapted, {mismatched} mismatched, {extra} extra)",
+            "expected": f"{len(frozen_files)} frozen + {len(adapted_files)} adapted",
+            "pass": mismatched == 0 and extra == 0,
+        }
     else:
         checks["skills_sha256"] = {
             "value": f"{len(skills_sha)} files",
@@ -302,14 +315,22 @@ def verify_provenance(results_dir: Path) -> dict:
     checks["agent_model"] = {"value": agent_model, "pass": bool(agent_model)}
 
     # --- 13. tools_sha256 verified against frozen repo tools ---
+    # Tools can come from two source directories:
+    # - tools/media/ (VLM, ASR, inspect, validate adapters)
+    # - tools/providers/ (DashScope provider adapters)
     tools_sha = run_manifest.get("tools_sha256", {})
     if tools_sha:
-        # Verify each tool file hash matches the repo source
-        tools_src = ROOT / "tools" / "media"
+        media_src = ROOT / "tools" / "media"
+        providers_src = ROOT / "tools" / "providers"
         matched = 0
         mismatched = 0
         for rel, sha in tools_sha.items():
-            src_file = tools_src / Path(rel).name
+            # Try tools/media/<filename> first, then tools/providers/<filename>
+            src_file = media_src / Path(rel).name
+            if not src_file.is_file():
+                src_file = providers_src / Path(rel).name
+            if not src_file.is_file() and "providers/" in rel:
+                src_file = providers_src / Path(rel).relative_to("providers/")
             if src_file.is_file():
                 actual = sha256_file(src_file)
                 if actual == sha:
@@ -320,7 +341,7 @@ def verify_provenance(results_dir: Path) -> dict:
                 mismatched += 1
         checks["tools_sha256"] = {
             "value": f"{len(tools_sha)} files ({matched} matched, {mismatched} mismatched)",
-            "expected": f"match against {tools_src}",
+            "expected": f"match against {media_src} + {providers_src}",
             "pass": mismatched == 0,
         }
     else:

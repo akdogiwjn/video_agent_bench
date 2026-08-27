@@ -326,99 +326,144 @@ def _evaluate_adapted(results_dir: Path, task_id: str, upstream_root: Path | Non
     llm_results = _run_adapted_judge(agent_output, rubric, vlm_model, omni_model)
     result["details"]["adapted_judge"] = llm_results
 
-    # Compute reward
+    # Compute reward using official weight semantics
+    # Positive items contribute weight; failed negative-weight items deduct
+    total_weight = 0
+    passed_weight = 0
     all_items = det_results["items"] + llm_results["items"]
-    passed = sum(1 for i in all_items if i["status"] == "pass")
-    total = sum(1 for i in all_items if i["status"] in ("pass", "fail"))
-    result["reward"] = passed / total if total > 0 else 0.0
+    for item in all_items:
+        w = item.get("weight", 1)
+        total_weight += abs(w)
+        if item["status"] == "pass":
+            passed_weight += abs(w)
+
+    result["reward"] = passed_weight / total_weight if total_weight > 0 else 0.0
     result["pass"] = result["reward"] > 0.5
     result["status"] = "evaluated"
     return result
 
 
 def _run_deterministic_edit_checks(video_path: Path, rubric: dict) -> dict:
-    """Run deterministic format checks from the official rubric (pillar 0)."""
+    """Run deterministic format checks from the official rubric.
+
+    Routes by item["judge"] == "deterministic" (not by pillar).
+    Preserves item["weight"] for scoring.
+    """
     import subprocess as _sp
 
     items = [i for i in rubric.get("items", []) if i.get("judge") == "deterministic"]
     results = {"total": len(items), "passed": 0, "failed": 0, "items": []}
 
+    # Probe once
+    try:
+        probe = _sp.run(
+            ["ffprobe", "-v", "quiet", "-print_format", "json",
+             "-show_format", "-show_streams", str(video_path)],
+            capture_output=True, text=True, timeout=30,
+        )
+        probe_data = json.loads(probe.stdout) if probe.returncode == 0 else {}
+    except Exception:
+        probe_data = {}
+
+    fmt = probe_data.get("format", {})
+    streams = probe_data.get("streams", [])
+    vstream = next((s for s in streams if s.get("codec_type") == "video"), {})
+    astream = next((s for s in streams if s.get("codec_type") == "audio"), {})
+    dur = float(fmt.get("duration", 0))
+    w = int(vstream.get("width", 0))
+    h = int(vstream.get("height", 0))
+    vcodec = vstream.get("codec_name", "")
+    acodec = astream.get("codec_name", "")
+    channels = int(astream.get("channels", 0))
+    sample_rate = int(astream.get("sample_rate", 0))
+    fmt_name = fmt.get("format_name", "")
+
     for item in items:
         item_id = item.get("id", "")
         criterion = item.get("criterion", "")
+        check = item.get("check", "")
+        weight = item.get("weight", 1)
+        check_lower = check.lower()
+
         passed = False
         detail = ""
 
-        try:
-            probe = _sp.run(
-                ["ffprobe", "-v", "quiet", "-print_format", "json",
-                 "-show_format", "-show_streams", str(video_path)],
-                capture_output=True, text=True, timeout=30,
-            )
-            probe_data = json.loads(probe.stdout) if probe.returncode == 0 else {}
-        except Exception:
-            probe_data = {}
-
-        fmt = probe_data.get("format", {})
-        streams = probe_data.get("streams", [])
-        vstream = next((s for s in streams if s.get("codec_type") == "video"), {})
-        astream = next((s for s in streams if s.get("codec_type") == "audio"), {})
-
-        check = item.get("check", "").lower()
-
-        if "duration" in check or "dur" in item_id.lower():
-            dur = float(fmt.get("duration", 0))
-            # Parse expected duration from rubric (e.g. "75 s")
+        # Duration check
+        if "duration" in check_lower and "75" in check:
+            tol = 0.1
+            passed = abs(dur - 75.0) <= tol
+            detail = f"duration={dur:.1f}s (expected 75s \u00b1{tol}s)"
+        elif "duration" in check_lower:
             passed = dur > 0
             detail = f"duration={dur:.1f}s"
-        elif "vertical" in check or "resolution" in check.lower() or "1080" in check:
-            w = vstream.get("width", 0)
-            h = vstream.get("height", 0)
-            passed = h > w  # vertical
+        # Vertical resolution
+        elif "1080" in check and "1920" in check:
+            passed = (w == 1080 and h == 1920)
+            detail = f"{w}x{h} (expected 1080x1920)"
+        elif "vertical" in check_lower or ("width" in check_lower and "height" in check_lower):
+            passed = h > w
             detail = f"{w}x{h}"
-        elif "codec" in check.lower() or "container" in check.lower():
-            codec = vstream.get("codec_name", "")
-            acodec = astream.get("codec_name", "")
-            fmt_name = fmt.get("format_name", "")
-            passed = "mp4" in fmt_name and codec in ("h264", "hevc")
-            detail = f"format={fmt_name}, vcodec={codec}, acodec={acodec}"
-        elif "stereo" in check.lower() or "channels" in check.lower():
-            ch = astream.get("channels", 0)
-            sr = int(astream.get("sample_rate", 0))
-            passed = ch == 2 and sr in (44100, 48000)
-            detail = f"channels={ch}, sample_rate={sr}"
-        elif "dead" in check.lower() or "silence" in check.lower():
-            # Skip complex audio analysis for now
-            passed = True
-            detail = "skipped (requires audio analysis)"
-        elif "novel" in check.lower() or "voice" in check.lower():
-            # Skip transcript analysis for now
-            passed = True
-            detail = "skipped (requires ASR)"
+        # Codec / container
+        elif "codec" in check_lower or "container" in check_lower or "h264" in check_lower:
+            passed = "mp4" in fmt_name and vcodec in ("h264", "hevc") and acodec in ("aac", "ac3")
+            detail = f"format={fmt_name}, vcodec={vcodec}, acodec={acodec}"
+        # Stereo / sample rate
+        elif "stereo" in check_lower or "channels" in check_lower:
+            passed = channels == 2 and sample_rate in (44100, 48000)
+            detail = f"channels={channels}, sample_rate={sample_rate}"
+        # Dead audio (silence detection)
+        elif "dead" in check_lower or "silence" in check_lower:
+            try:
+                sil_result = _sp.run(
+                    ["ffmpeg", "-i", str(video_path), "-af",
+                     "silencedetect=noise=-45dB:d=1.5", "-f", "null", "-"],
+                    capture_output=True, text=True, timeout=60,
+                )
+                silence_count = sil_result.stderr.count("silence_start")
+                passed = silence_count == 0
+                detail = f"silence_events={silence_count}"
+            except Exception as e:
+                passed = False
+                detail = f"silence detection error: {e}"
+        # Novel voice-over
+        elif "novel" in check_lower or "voice" in check_lower:
+            passed = False
+            detail = "requires ASR transcript comparison - not implemented in adapted mode"
         else:
-            passed = True
-            detail = "no check implemented"
+            passed = False
+            detail = f"unrecognized deterministic check: {check[:60]}"
 
         if passed:
             results["passed"] += 1
         else:
             results["failed"] += 1
         results["items"].append({"id": item_id, "status": "pass" if passed else "fail",
-                                  "detail": detail, "criterion": criterion})
+                                  "detail": detail, "criterion": criterion,
+                                  "weight": weight})
 
     return results
 
 
 def _run_adapted_judge(video_path: Path, rubric: dict, vlm_model: str, omni_model: str) -> dict:
-    """Run LLM-judge rubric items using Qwen-VL (visual) and Qwen-Omni (audio)."""
+    """Run LLM-judge rubric items using Qwen-VL (visual) and Qwen-Omni (audio).
+
+    Routes by item["judge"] field (not by pillar number):
+    - judge == "opus-vision" -> Qwen-VL adapted visual judge
+    - judge == "gemini-audio" -> Qwen-Omni adapted audio judge
+
+    Preserves item["weight"] including negative weights for penalty items.
+    Failed items that are not evaluated (no judge available) are FAIL, not PASS.
+    """
+    import tempfile
+    import subprocess as _sp
+    import shutil
     from tools.providers.dashscope_vlm import vlm_check_prompt_adherence
+    from tools.providers.dashscope_omni import omni_judge_audio
 
     items = [i for i in rubric.get("items", []) if i.get("judge") != "deterministic"]
     results = {"total": len(items), "passed": 0, "failed": 0, "items": []}
 
     # Extract frames from the video for visual judging
-    import tempfile
-    import subprocess as _sp
     tmpdir = tempfile.mkdtemp(prefix="edit_judge_")
     probe = _sp.run(
         ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(video_path)],
@@ -441,75 +486,74 @@ def _run_adapted_judge(video_path: Path, rubric: dict, vlm_model: str, omni_mode
         if os.path.exists(fp):
             frame_paths.append(fp)
 
+    # Extract audio for audio judging (compressed to stay under 10MB)
+    audio_path = f"{tmpdir}/audio.mp3"
+    _sp.run(["ffmpeg", "-y", "-i", str(video_path),
+             "-ac", "1", "-ar", "16000", "-b:a", "64k",
+             audio_path],
+            capture_output=True, timeout=60)
+
     for item in items:
         item_id = item.get("id", "")
         criterion = item.get("criterion", "")
-        pillar = item.get("pillar", 1)
+        judge_type = item.get("judge", "")
+        weight = item.get("weight", 1)
+        why = item.get("why", "")
 
-        if pillar == 1 or pillar == 2:
-            # Visual pillar — use Qwen-VL
+        passed = False
+        detail = ""
+
+        if judge_type == "opus-vision":
+            # Visual judge -> Qwen-VL
             if frame_paths:
+                judge_prompt = (
+                    f"You are judging a video edit. Criterion: {criterion}\n"
+                    f"Why this matters: {why}\n"
+                    f"Does the video meet this criterion? "
+                    f"Answer YES or NO, then explain briefly."
+                )
                 judge_result = vlm_check_prompt_adherence(
-                    frame_paths, criterion,
-                    model=vlm_model,
+                    frame_paths, judge_prompt, model=vlm_model,
                 )
                 passed = judge_result["pass"]
                 detail = judge_result["detail"]
             else:
                 passed = False
-                detail = "no frames extracted"
-        elif pillar == 3:
-            # Audio pillar — would use Qwen-Omni
-            if omni_model:
-                detail = f"audio judge not yet implemented (OMNI_MODEL={omni_model})"
-                passed = True  # Skip for now — don't fail on unimplemented audio judge
+                detail = "no frames extracted for visual judge"
+
+        elif judge_type == "gemini-audio":
+            # Audio judge -> Qwen-Omni
+            if omni_model and os.path.exists(audio_path):
+                judge_prompt = (
+                    f"You are judging the audio of a video edit. Criterion: {criterion}\n"
+                    f"Why this matters: {why}\n"
+                    f"Does the audio meet this criterion? "
+                    f"Answer YES or NO, then explain briefly."
+                )
+                judge_result = omni_judge_audio(audio_path, judge_prompt, model=omni_model)
+                passed = judge_result["pass"]
+                detail = judge_result["detail"]
+            elif not omni_model:
+                passed = False
+                detail = "OMNI_MODEL not set - audio judge NOT_EVALUATED (FAIL)"
             else:
-                detail = "OMNI_MODEL not set — audio judge skipped"
-                passed = True  # Don't fail if audio judge is not configured
+                passed = False
+                detail = "audio extraction failed - NOT_EVALUATED (FAIL)"
+
         else:
-            passed = True
-            detail = "unknown pillar"
+            # Unknown judge type -> FAIL (not silently pass)
+            passed = False
+            detail = f"unknown judge type: {judge_type}"
 
         if passed:
             results["passed"] += 1
         else:
             results["failed"] += 1
         results["items"].append({"id": item_id, "status": "pass" if passed else "fail",
-                                  "detail": detail, "criterion": criterion})
+                                  "detail": detail, "criterion": criterion,
+                                  "weight": weight, "judge": judge_type})
+
+    # Cleanup
+    shutil.rmtree(tmpdir, ignore_errors=True)
 
     return results
-
-
-def main():
-    parser = argparse.ArgumentParser(description="EDIT verifier (AgenticVBench Repurpose adapter)")
-    parser.add_argument("--results", required=True, help="Path to results/<run-id>/ directory")
-    parser.add_argument("--task-id", default="football", help="Task ID (default: football)")
-    parser.add_argument("--upstream", default=None, help="Path to AgenticVBench tasks_repurpose root")
-    parser.add_argument("--image", default=None, help="Docker image for verifier container")
-    args = parser.parse_args()
-
-    results_dir = Path(args.results).resolve()
-    upstream_root = Path(args.upstream) if args.upstream else None
-
-    result = evaluate(results_dir, args.task_id, upstream_root, args.image)
-
-    output_path = results_dir / "verification" / "verification_result.json"
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w") as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
-        f.write("\n")
-
-    print(f"=== EDIT Verification ===")
-    print(f"  task_id: {result['task_id']}")
-    print(f"  status:  {result['status']}")
-    print(f"  reward:  {result['reward']:.2f}")
-    print(f"  pass:    {result['pass']}")
-    if result["status"] != "completed":
-        print(f"  reason:  {result['details'].get('reason', 'unknown')}")
-    print(f"  output:  {output_path}")
-
-    sys.exit(0 if result["pass"] else 1)
-
-
-if __name__ == "__main__":
-    main()

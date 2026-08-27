@@ -33,6 +33,19 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+# Auto-load config.env if it exists (before any env var reads)
+_config_env = ROOT / "config" / "config.env"
+if _config_env.is_file():
+    with open(_config_env) as f:
+        for _line in f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _key, _, _val = _line.partition("=")
+                _key = _key.strip()
+                _val = _val.strip()
+                if _val and _key not in os.environ:
+                    os.environ[_key] = _val
+
 from runner.workspace import (
     create_workspace,
     populate_task,
@@ -405,7 +418,7 @@ def run_case(args):
             # Agent (DeepSeek)
             "DEEPSEEK_API_KEY", "DEEPSEEK_BASE_URL",
             # DashScope (VLM, image-gen, video-gen, omni)
-            "DASHSCOPE_API_KEY", "DASHSCOPE_BASE_URL",
+            "DASHSCOPE_API_KEY", "DASHSCOPE_BASE_URL", "DASHSCOPE_NATIVE_BASE_URL",
             "VLM_PROVIDER", "VLM_MODEL", "VLM_BASE_URL",
             "OMNI_PROVIDER", "OMNI_MODEL",
             "IMAGE_GEN_PROVIDER", "IMAGE_GEN_MODEL",
@@ -511,6 +524,7 @@ def run_case(args):
         "original_prompt_sha256": original_prompt_sha, "adaptation_sha256": adaptation_sha,
         "input_sha256": input_sha, "skills_sha256": skills_sha, "verifier_sha256": verifier_sha,
         "tools_sha256": hash_directory(workspace / "tools") if (workspace / "tools").is_dir() else {},
+        "runtime_skills_sha256": hash_directory(ROOT / "runtime_skills") if (ROOT / "runtime_skills").is_dir() else {},
         "started_at": started_at, "finished_at": finished_at,
         "agent_exit_code": result["exit_code"],
         "verifier_status": "pending", "verifier_pass": False, "verifier_reward": 0.0,
