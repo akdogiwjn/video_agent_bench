@@ -335,19 +335,33 @@ def normalize_trajectory(raw_trajectory_path: Path, output_path: Path) -> bool:
             entry_type = entry.get("type", "")
             data = entry.get("data", {}) if isinstance(entry.get("data"), dict) else {}
 
+            # Check if this is a message with toolCall in content
+            # OpenClaw puts tool calls inside message.content[] as {"type":"toolCall","name":"exec",...}
+            msg = entry.get("message", {})
+            content = msg.get("content", []) if isinstance(msg, dict) else []
+            has_tool_call_in_content = False
+            has_tool_result_in_content = False
+            if isinstance(content, list):
+                for item in content:
+                    if isinstance(item, dict):
+                        if item.get("type") == "toolCall":
+                            has_tool_call_in_content = True
+                        elif item.get("type") == "toolResult" or item.get("role") == "toolResult":
+                            has_tool_result_in_content = True
+
             # Map OpenClaw event types to normalized types
-            if entry_type in ("model", "tool_call", "tool_result", "message",
-                              "model.completed", "session.ended"):
+            if has_tool_call_in_content or entry_type in ("tool.call", "tool_call", "toolCall"):
+                event["type"] = "tool_call"
+            elif has_tool_result_in_content or entry_type in ("tool.result", "tool_result", "toolResult"):
+                event["type"] = "tool_result"
+            elif entry_type in ("model", "tool_call", "tool_result", "message",
+                                "model.completed", "session.ended"):
                 if entry_type == "model.completed":
                     event["type"] = "model"
                 elif entry_type == "session.ended":
                     event["type"] = "message"
                 else:
                     event["type"] = entry_type
-            elif entry_type in ("tool.call", "tool_call"):
-                event["type"] = "tool_call"
-            elif entry_type in ("tool.result", "tool_result"):
-                event["type"] = "tool_result"
             elif entry.get("role") == "assistant":
                 event["type"] = "model"
             elif entry.get("tool_calls") or entry.get("tool") or entry.get("toolName"):

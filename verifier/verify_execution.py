@@ -93,7 +93,14 @@ def verify_execution(results_dir: Path, case_type: str | None = None) -> dict:
             if isinstance(trajectory, list):
                 tool_call_count = sum(
                     1 for e in trajectory
-                    if isinstance(e, dict) and e.get("type") in ("tool_call", "tool.call")
+                    if isinstance(e, dict) and (
+                        e.get("type") in ("tool_call", "tool.call", "toolCall")
+                        or any(
+                            isinstance(item, dict) and item.get("type") == "toolCall"
+                            for item in (e.get("message", {}).get("content", []) if isinstance(e.get("message"), dict) else [])
+                            if isinstance(item, dict)
+                        )
+                    )
                 )
             break
         except Exception:

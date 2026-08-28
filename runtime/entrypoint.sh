@@ -72,7 +72,7 @@ cat > "$OPENCLAW_HOME/openclaw.json" <<OCJSON
             "name": "DeepSeek V4 Flash",
             "reasoning": true,
             "input": ["text"],
-            "contextWindow": 64000,
+            "contextWindow": 128000,
             "maxTokens": 8192,
             "compat": {
               "supportsTools": true,
@@ -94,6 +94,7 @@ cat > "$OPENCLAW_HOME/openclaw.json" <<OCJSON
       "model": {
         "primary": "deepseek/deepseek-v4-flash"
       },
+      "contextInjection": "continuation-skip",
       "subagents": {
         "maxConcurrent": 1
       }
