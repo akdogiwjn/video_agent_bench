@@ -224,14 +224,15 @@ def verify_provenance(results_dir: Path) -> dict:
         for rel, sha in skills_sha.items():
             if "__pycache__" in rel or rel.endswith(".pyc"):
                 continue
-            if rel in frozen_files:
-                if sha == frozen_files[rel]:
-                    matched_frozen += 1
-                else:
-                    mismatched += 1
-            elif rel in adapted_files:
+            # Check adapted first (runtime_skills/ may have same names as frozen VideoWeaver skills)
+            if rel in adapted_files:
                 if sha == adapted_files[rel]:
                     matched_adapted += 1
+                else:
+                    mismatched += 1
+            elif rel in frozen_files:
+                if sha == frozen_files[rel]:
+                    matched_frozen += 1
                 else:
                     mismatched += 1
             else:
