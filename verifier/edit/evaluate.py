@@ -80,7 +80,11 @@ def setup_verifier_workspace(
     # Copy source video (from case materials)
     case_source = ROOT / "cases" / "edit" / "materials" / "source.mp4"
     if case_source.is_file():
-        shutil.copy2(case_source, baked_dst / "source.mp4")
+        # Large file: symlink to avoid copying 2.47GB
+        try:
+            (baked_dst / "source.mp4").symlink_to(case_source.resolve())
+        except OSError:
+            shutil.copy2(case_source, baked_dst / "source.mp4")
 
     # Copy brief.md if it exists
     brief_src = task_dir / "environment" / "brief.md"

@@ -532,7 +532,7 @@ def run_case(args):
         "providers": {
             "agent_llm": {
                 "provider": "deepseek",
-                "model": args.model,
+                "model": "deepseek/deepseek-v4-flash",
             },
             "vlm": {
                 "provider": os.environ.get("VLM_PROVIDER", "dashscope"),
@@ -596,7 +596,7 @@ def main():
                         help="Case ID (for GEN cases with subdirectory layout, e.g. gen_case_001)")
     parser.add_argument("--image", default="video-agent-bench:1.0",
                         help="Docker image to use")
-    parser.add_argument("--model", default=os.environ.get("AGENT_MODEL", "openai/deepseek-v4-flash"),
+    parser.add_argument("--model", default=os.environ.get("AGENT_MODEL", "deepseek/deepseek-v4-flash"),
                         help="Agent model")
     parser.add_argument("--timeout", type=int, default=int(os.environ.get("TIMEOUT", "3600")),
                         help="Agent timeout in seconds")

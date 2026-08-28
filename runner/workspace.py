@@ -125,15 +125,30 @@ def populate_task(workspace: Path, case_dir: Path) -> list[Path]:
 
 
 def populate_materials(workspace: Path, case_dir: Path) -> list[Path]:
-    """Copy source materials into workspace/materials/."""
+    """Link or copy source materials into workspace/materials/.
+
+    For large files (>100MB), use symlinks to avoid copying.
+    For small files, copy normally.
+    """
     mat_src = case_dir / "materials"
     mat_dst = workspace / "materials"
     copied = []
     if mat_src.is_dir():
         for f in sorted(mat_src.iterdir()):
             if f.is_file() and f.name != ".DS_Store":
-                shutil.copy2(f, mat_dst / f.name)
-                copied.append(mat_dst / f.name)
+                dst = mat_dst / f.name
+                size_mb = f.stat().st_size / (1024 * 1024)
+                if size_mb > 100 and not dst.exists():
+                    # Large file: symlink instead of copy
+                    try:
+                        dst.symlink_to(f.resolve())
+                        copied.append(dst)
+                        continue
+                    except OSError:
+                        pass  # Fall through to copy
+                if not dst.exists():
+                    shutil.copy2(f, dst)
+                    copied.append(dst)
     return copied
 
 

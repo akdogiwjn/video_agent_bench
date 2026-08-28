@@ -36,7 +36,8 @@ mkdir -p "$OPENCLAW_HOME"
 # (media generation goes through VideoWeaver skills, not OpenClaw built-ins)
 TOOL_DENY='"browser","canvas","cron","sessions_spawn","sessions_yield","subagents","web_search","x_search","web_fetch","image_generate","music_generate","video_generate","tts","message","heartbeat_respond","nodes","computer","dashboard","terminal","portal","show_widget","skill_workshop","suggest_task","dismiss_task"'
 
-# openclaw.json — skill loader + environment + workspace + tool policy
+# openclaw.json — skill loader + environment + workspace + tool policy + DeepSeek provider
+# DeepSeek is configured as a custom OpenAI-compatible provider (not fake OPENAI_API_KEY mapping)
 cat > "$OPENCLAW_HOME/openclaw.json" <<OCJSON
 {
   "skills": {
@@ -58,12 +59,41 @@ cat > "$OPENCLAW_HOME/openclaw.json" <<OCJSON
     "profile": "coding",
     "deny": [$TOOL_DENY]
   },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "deepseek": {
+        "baseUrl": "${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}",
+        "apiKey": "\${DEEPSEEK_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "deepseek-v4-flash",
+            "name": "DeepSeek V4 Flash",
+            "reasoning": true,
+            "input": ["text"],
+            "contextWindow": 64000,
+            "maxTokens": 8192,
+            "compat": {
+              "supportsTools": true,
+              "supportsTemperature": true,
+              "requiresStringContent": true,
+              "requiresReasoningContentOnAssistantMessages": true
+            }
+          }
+        ]
+      }
+    }
+  },
   "agents": {
     "defaults": {
       "workspace": "/workspace",
       "timeoutSeconds": $TIMEOUT,
       "verboseDefault": "full",
       "maxConcurrent": 100,
+      "model": {
+        "primary": "deepseek/deepseek-v4-flash"
+      },
       "subagents": {
         "maxConcurrent": 0
       }
@@ -91,15 +121,8 @@ EAJSON
 
 export OUTPUT_DIR="/workspace/output"
 export OPENCLAW_WORKSPACE_DIR="/workspace"
-
-# --- Map DeepSeek API key to OpenAI-compatible vars for OpenClaw ---
-# OpenClaw uses OPENAI_API_KEY / OPENAI_BASE_URL for OpenAI-compatible providers.
-# We map DEEPSEEK_API_KEY → OPENAI_API_KEY for the Agent LLM only.
-# VLM / image-gen / video-gen use DASHSCOPE_API_KEY directly (not OPENAI_API_KEY).
-if [ -n "$DEEPSEEK_API_KEY" ]; then
-    export OPENAI_API_KEY="$DEEPSEEK_API_KEY"
-    export OPENAI_BASE_URL="${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}"
-fi
+export DEEPSEEK_API_KEY="${DEEPSEEK_API_KEY:-}"
+export DEEPSEEK_BASE_URL="${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}"
 
 echo "=== video-agent-bench entrypoint ==="
 echo "  task_file:    $TASK_FILE"
@@ -117,7 +140,7 @@ set +e
 openclaw agent \
     --local \
     --agent main \
-    --model "$AGENT_MODEL" \
+    --model "deepseek/deepseek-v4-flash" \
     --session-key "$SESSION_KEY" \
     --timeout "$TIMEOUT" \
     --message "$TASK_MESSAGE"

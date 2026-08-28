@@ -1,0 +1,33 @@
+{
+  "benchmark": "AgenticVBench",
+  "case_id": "football_short",
+  "case_source": "adapted",
+  "official_benchmark_case": false,
+  "upstream_commit": "4bb09e0478be8008f7baba518c5d8ec3f3fab7a3",
+  "files": {
+    "benchmark_source.json": "1c0b9b25cb479aea3e70b82eff2f24f18a01871007e26465f34ed2619f1da1cf",
+    "materials/source.mp4": "09208c18f0f40e5494b941ed63cfc6f3443002556702be81e4798ec7ba2fd82c",
+    "task/brief.md": "f259a52b9a77b97bae6730002cb74fbae6724cba061cfcc5afb30e0087a90840",
+    "task/instruction.md": "55a46ce6bb05d758c83f1bc9662eee9d8daa4e431967468cb7b3e794b4170580"
+  },
+  "materials": {
+    "source.mp4": {
+      "path": "materials/source.mp4",
+      "sha256": "09208c18f0f40e5494b941ed63cfc6f3443002556702be81e4798ec7ba2fd82c",
+      "size_bytes": 321419186,
+      "duration_seconds": 842.0,
+      "format": "mp4/h264",
+      "source": "compact extract of official AgenticVBench football source.mp4",
+      "status": "frozen"
+    }
+  },
+  "visible_capabilities": [
+    "shell",
+    "python",
+    "ffmpeg",
+    "ffprobe",
+    "vlm",
+    "asr"
+  ],
+  "task_semantics_modified": false
+}
