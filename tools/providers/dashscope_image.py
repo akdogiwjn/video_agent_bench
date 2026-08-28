@@ -113,21 +113,30 @@ def generate_image(prompt: str, output_path: str, model: str | None = None,
         output = poll_data.get("output", {})
         status = output.get("task_status", "")
         if status == "SUCCEEDED":
-            # Wan2.7 image results are in output.results[]
-            results = output.get("results", [])
-            if results:
-                image_url = results[0].get("url", "") if isinstance(results[0], dict) else str(results[0])
-                if image_url:
-                    try:
-                        img_resp = requests.get(image_url, timeout=60)
-                        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-                        with open(output_path, "wb") as f:
-                            f.write(img_resp.content)
-                        return {"success": True, "output_path": output_path,
-                                "error": "", "task_id": task_id}
-                    except Exception as e:
-                        return {"success": False, "error": f"Download failed: {e}",
-                                "output_path": "", "task_id": task_id}
+            # Wan2.7 image results are in output.choices[].message.content[].image
+            image_url = ""
+            choices = output.get("choices", [])
+            if choices:
+                content = choices[0].get("message", {}).get("content", [])
+                if content and isinstance(content, list):
+                    image_url = content[0].get("image", "") if isinstance(content[0], dict) else ""
+            # Fallback: try results array
+            if not image_url:
+                results = output.get("results", [])
+                if results:
+                    image_url = results[0].get("url", "") if isinstance(results[0], dict) else str(results[0])
+
+            if image_url:
+                try:
+                    img_resp = requests.get(image_url, timeout=60)
+                    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+                    with open(output_path, "wb") as f:
+                        f.write(img_resp.content)
+                    return {"success": True, "output_path": output_path,
+                            "error": "", "task_id": task_id}
+                except Exception as e:
+                    return {"success": False, "error": f"Download failed: {e}",
+                            "output_path": "", "task_id": task_id}
             return {"success": False, "error": "No image URL in results",
                     "output_path": "", "task_id": task_id}
         elif status == "FAILED":
