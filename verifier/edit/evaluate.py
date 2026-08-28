@@ -184,14 +184,39 @@ def run_verifier_in_docker(
         }
 
 
-def evaluate(results_dir: Path, task_id: str, upstream_root: Path | None = None, image: str | None = None) -> dict:
+def evaluate(results_dir: Path, task_id: str, upstream_root: Path | None = None,
+             image: str | None = None, case_dir: Path | None = None) -> dict:
     """Run the EDIT verifier and return standardized results.
 
     Supports two modes controlled by EDIT_VERIFIER_MODE env var:
     - "official": uses frozen AgenticVBench Gemini+Anthropic verifier in Docker
     - "adapted": uses Qwen-VL (visual judge) + Qwen-Omni (audio judge) via DashScope
+
+    Args:
+        task_id: Case ID (e.g. "football_short" or "football")
+        upstream_root: Path to AgenticVBench tasks_repurpose root
+        image: Docker image for official verifier
+        case_dir: Path to the case directory (for source.mp4 location)
     """
     verifier_mode = os.environ.get("EDIT_VERIFIER_MODE", "adapted")
+
+    # Resolve case_dir for source.mp4 location
+    if case_dir is None:
+        # Fallback: try cases/edit/<task_id>/ first, then cases/edit/
+        candidate = ROOT / "cases" / "edit" / task_id
+        if candidate.is_dir():
+            case_dir = candidate
+        else:
+            case_dir = ROOT / "cases" / "edit"
+
+    # Resolve upstream_task_id (for rubric lookup)
+    # football_short uses official football's rubric
+    manifest_path = case_dir / "case_manifest.json"
+    upstream_task_id = task_id
+    if manifest_path.is_file():
+        with open(manifest_path) as f:
+            manifest = json.load(f)
+        upstream_task_id = manifest.get("upstream_task_id", task_id)
 
     result = {
         "benchmark": "AgenticVBench",
@@ -231,7 +256,8 @@ def evaluate(results_dir: Path, task_id: str, upstream_root: Path | None = None,
         result["details"]["reason"] = "Agent did not produce output/repurpose.mp4"
         return result
 
-    case_source = ROOT / "cases" / "edit" / "materials" / "source.mp4"
+    # Check source material from case_dir (not hardcoded cases/edit/)
+    case_source = case_dir / "materials" / "source.mp4"
     if not case_source.is_file():
         result["status"] = "no_source"
         result["details"]["reason"] = "Source material source.mp4 not downloaded yet"
@@ -241,9 +267,9 @@ def evaluate(results_dir: Path, task_id: str, upstream_root: Path | None = None,
         return result
 
     if verifier_mode == "official":
-        return _evaluate_official(results_dir, task_id, upstream_root, image, result)
+        return _evaluate_official(results_dir, upstream_task_id, upstream_root, image, result)
     else:
-        return _evaluate_adapted(results_dir, task_id, upstream_root, result)
+        return _evaluate_adapted(results_dir, upstream_task_id, upstream_root, result, case_dir)
 
 
 def _evaluate_official(results_dir: Path, task_id: str, upstream_root: Path | None,
@@ -281,7 +307,7 @@ def _evaluate_official(results_dir: Path, task_id: str, upstream_root: Path | No
 
 
 def _evaluate_adapted(results_dir: Path, task_id: str, upstream_root: Path | None,
-                      result: dict) -> dict:
+                      result: dict, case_dir: Path | None = None) -> dict:
     """Run the adapted verifier using Qwen-VL (visual) + Qwen-Omni (audio).
 
     Reads the official AgenticVBench rubric items and evaluates them
@@ -408,15 +434,27 @@ def _run_deterministic_edit_checks(video_path: Path, rubric: dict) -> dict:
             passed = h > w
             detail = f"{w}x{h}"
         # Codec / container
-        elif "codec" in check_lower or "container" in check_lower or "h264" in check_lower:
-            passed = "mp4" in fmt_name and vcodec in ("h264", "hevc") and acodec in ("aac", "ac3")
-            detail = f"format={fmt_name}, vcodec={vcodec}, acodec={acodec}"
+        # Container check
+        elif "container" in check_lower or "mp4" in check_lower:
+            passed = "mp4" in fmt_name
+            detail = f"format={fmt_name}"
+        # Codec
+        elif "codec" in check_lower or "h264" in check_lower or "vcodec" in check_lower or "acodec" in check_lower:
+            if "acodec" in check_lower or "audio codec" in check_lower:
+                passed = acodec in ("aac", "ac3")
+                detail = f"acodec={acodec}"
+            elif "vcodec" in check_lower or "video codec" in check_lower:
+                passed = vcodec in ("h264", "hevc")
+                detail = f"vcodec={vcodec}"
+            else:
+                passed = "mp4" in fmt_name and vcodec in ("h264", "hevc") and acodec in ("aac", "ac3")
+                detail = f"format={fmt_name}, vcodec={vcodec}, acodec={acodec}"
         # Stereo / sample rate
         elif "stereo" in check_lower or "channels" in check_lower:
             passed = channels == 2 and sample_rate in (44100, 48000)
             detail = f"channels={channels}, sample_rate={sample_rate}"
-        # Dead audio (silence detection)
-        elif "dead" in check_lower or "silence" in check_lower:
+        # Dead audio / silence / RMS
+        elif "dead" in check_lower or "silence" in check_lower or "rms" in check_lower:
             try:
                 sil_result = _sp.run(
                     ["ffmpeg", "-i", str(video_path), "-af",
@@ -429,10 +467,10 @@ def _run_deterministic_edit_checks(video_path: Path, rubric: dict) -> dict:
             except Exception as e:
                 passed = False
                 detail = f"silence detection error: {e}"
-        # Novel voice-over
-        elif "novel" in check_lower or "voice" in check_lower:
+        # Novel voice-over / Whisper transcript / gemini-audio deterministic items
+        elif "novel" in check_lower or "voice" in check_lower or "whisper" in check_lower or "gemini-audio" in check_lower:
             passed = False
-            detail = "requires ASR transcript comparison - not implemented in adapted mode"
+            detail = "requires Whisper transcript + source comparison - not implemented in adapted mode"
         else:
             passed = False
             detail = f"unrecognized deterministic check: {check[:60]}"
@@ -561,3 +599,47 @@ def _run_adapted_judge(video_path: Path, rubric: dict, vlm_model: str, omni_mode
     shutil.rmtree(tmpdir, ignore_errors=True)
 
     return results
+
+
+def main():
+    """CLI entry point for the EDIT verifier."""
+    parser = argparse.ArgumentParser(description="EDIT verifier (AgenticVBench Repurpose adapter)")
+    parser.add_argument("--results", required=True, help="Path to results/<run-id>/ directory")
+    parser.add_argument("--task-id", default="football", help="Task ID (default: football)")
+    parser.add_argument("--upstream", default=None, help="Path to AgenticVBench tasks_repurpose root")
+    parser.add_argument("--image", default=None, help="Docker image for official verifier container")
+    parser.add_argument("--case-dir", default=None, help="Path to case directory (for source.mp4 location)")
+    args = parser.parse_args()
+
+    results_dir = Path(args.results).resolve()
+    upstream_root = Path(args.upstream) if args.upstream else None
+    case_dir = Path(args.case_dir) if args.case_dir else None
+
+    result = evaluate(results_dir, args.task_id, upstream_root, args.image, case_dir)
+
+    output_path = results_dir / "verification" / "verification_result.json"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
+        json.dump(result, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+
+    # Also write benchmark_result.json (V2 specific output)
+    benchmark_path = results_dir / "verification" / "benchmark_result.json"
+    with open(benchmark_path, "w") as f:
+        json.dump(result, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+
+    print(f"=== EDIT Verification ===")
+    print(f"  task_id: {result['task_id']}")
+    print(f"  status:  {result['status']}")
+    print(f"  reward:  {result['reward']:.2f}")
+    print(f"  pass:    {result['pass']}")
+    if result["status"] != "evaluated":
+        print(f"  reason:  {result['details'].get('reason', 'unknown')}")
+    print(f"  output:  {output_path}")
+
+    sys.exit(0 if result["pass"] else 1)
+
+
+if __name__ == "__main__":
+    main()

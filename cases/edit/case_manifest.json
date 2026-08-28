@@ -32,5 +32,6 @@
     "vlm",
     "asr"
   ],
-  "task_semantics_modified": false
+  "task_semantics_modified": false,
+  "upstream_task_id": "football"
 }

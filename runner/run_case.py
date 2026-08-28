@@ -274,7 +274,7 @@ def run_benchmark_verifier(case_type: str, results_dir: Path, case_dir: Path, im
             with open(manifest_path) as f:
                 m = json.load(f)
             task_id = m.get("case_id", "football")
-            cmd.extend(["--task-id", task_id, "--image", image])
+            cmd.extend(["--task-id", task_id, "--image", image, "--case-dir", str(case_dir)])
 
     try:
         result = subprocess.run(
