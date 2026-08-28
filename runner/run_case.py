@@ -78,7 +78,20 @@ def load_case(case_type: str, case_id: str | None = None) -> tuple[Path, dict]:
     """
     base_dir = ROOT / "cases" / case_type
 
-    # Try direct manifest first (EDIT layout: cases/edit/case_manifest.json)
+    # If case_id is specified, look for subdirectory first (e.g. cases/edit/football_short/)
+    if case_id:
+        candidate = base_dir / case_id
+        if (candidate / "case_manifest.json").is_file():
+            case_dir = candidate
+            manifest_path = case_dir / "case_manifest.json"
+            with open(manifest_path) as f:
+                manifest = json.load(f)
+            if manifest.get("status") == "blocked":
+                print(f"ERROR: case is blocked: {manifest.get('reason', 'unknown')}", file=sys.stderr)
+                sys.exit(1)
+            return case_dir, manifest
+
+    # Try direct manifest (EDIT layout: cases/edit/case_manifest.json)
     manifest_path = base_dir / "case_manifest.json"
     if manifest_path.is_file():
         case_dir = base_dir
