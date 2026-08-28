@@ -138,7 +138,7 @@ def populate_materials(workspace: Path, case_dir: Path) -> list[Path]:
             if f.is_file() and f.name != ".DS_Store":
                 dst = mat_dst / f.name
                 size_mb = f.stat().st_size / (1024 * 1024)
-                if size_mb > 100 and not dst.exists():
+                if size_mb > 500 and not dst.exists():
                     # Large file: symlink instead of copy
                     try:
                         dst.symlink_to(f.resolve())
