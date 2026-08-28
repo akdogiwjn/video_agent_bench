@@ -187,10 +187,13 @@ def collect_trajectory(workspace: Path, results_dir: Path, openclaw_state_dir: P
         raw_dst = raw_dir
         for item in openclaw_state_dir.rglob("*"):
             if item.is_file() and item.name != ".DS_Store":
-                rel = item.relative_to(openclaw_state_dir)
-                dst = raw_dst / rel
-                dst.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(item, dst)
+                try:
+                    rel = item.relative_to(openclaw_state_dir)
+                    dst = raw_dst / rel
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(item, dst)
+                except (PermissionError, OSError):
+                    pass  # Skip files we can't read (e.g. root-owned from Docker)
         collected["raw_openclaw_state"] = str(raw_dir)
 
         # Look for trajectory export files written by entrypoint.sh to workspace

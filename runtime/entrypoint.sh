@@ -95,7 +95,7 @@ cat > "$OPENCLAW_HOME/openclaw.json" <<OCJSON
         "primary": "deepseek/deepseek-v4-flash"
       },
       "subagents": {
-        "maxConcurrent": 0
+        "maxConcurrent": 1
       }
     },
     "list": [
