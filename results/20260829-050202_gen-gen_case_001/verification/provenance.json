@@ -1,0 +1,5 @@
+{
+  "pass": true,
+  "stdout": "rk_commit = fd18b3d055cb0fc6... (expected: VBench=fd18b3d055cb..., VideoWeaver=c809392fe6c2...)\n  PASS: case_id = gen_case_001\n  PASS: task_sha256 = c7e6c141487f77d9... (expected: c7e6c141487f77d9...)\n  PASS: original_prompt_sha256 = 140e2594cce0d2b8... (expected: 140e2594cce0d2b8...)\n  PASS: adaptation_sha256 = c297fae196a36793... (expected: c297fae196a36793...)\n  PASS: input_sha256 = 0 files\n  PASS: skills_sha256 = 10 files (6 frozen, 4 adapted, 0 mismatched, 0 extra) (expected: 81 frozen + 4 adapted)\n  PASS: verifier_sha256 = 783984507a8b4680... (expected: 783984507a8b4680...)\n  PASS: docker_image = video-agent-bench:1.0\n  PASS: docker_image_id = sha256:3e1b33a27a522bdb3...\n  PASS: agent = OpenClaw\n  PASS: agent_version = OpenClaw 2026.7.1-2 (0790d9f)\n  PASS: agent_model = deepseek/deepseek-v4-flash\n  PASS: tools_sha256 = 11 files (11 matched, 0 mismatched) (expected: match against /home/lcq/video_agent_bench/tools/media + /home/lcq/video_agent_bench/tools/providers)\n\nOverall: PASS\n",
+  "stderr": ""
+}

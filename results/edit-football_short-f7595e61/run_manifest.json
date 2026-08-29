@@ -1,0 +1,73 @@
+{
+  "benchmark": "AgenticVBench",
+  "case_id": "football_short",
+  "case_source": "adapted",
+  "official_benchmark_case": false,
+  "benchmark_commit": "4bb09e0478be8008f7baba518c5d8ec3f3fab7a3",
+  "benchmark_sources": {
+    "primary": {
+      "benchmark": "AgenticVBench",
+      "commit": "4bb09e0478be8008f7baba518c5d8ec3f3fab7a3"
+    }
+  },
+  "agent": "OpenClaw",
+  "agent_version": "OpenClaw 2026.7.1-2 (0790d9f)",
+  "agent_model": "deepseek/deepseek-v4-flash",
+  "docker_image": "video-agent-bench:1.0",
+  "docker_image_id": "sha256:a3db8c90246333a3481df7e457b1a68ebcf6689435252d160c121194cb89a126",
+  "task_sha256": "55a46ce6bb05d758c83f1bc9662eee9d8daa4e431967468cb7b3e794b4170580",
+  "instruction_sha256": "55a46ce6bb05d758c83f1bc9662eee9d8daa4e431967468cb7b3e794b4170580",
+  "original_prompt_sha256": "",
+  "adaptation_sha256": "",
+  "input_sha256": {
+    "source.mp4": "09208c18f0f40e5494b941ed63cfc6f3443002556702be81e4798ec7ba2fd82c"
+  },
+  "skills_sha256": {},
+  "verifier_sha256": "8a9f08127b03ca63e69150731ec53b4633eb64d6960df491cb4ff644d3ac49f6",
+  "tools_sha256": {
+    "asr_transcribe.py": "25c14e92b203f221db0755f4e034be99c72b8fb3abe31a6aa9423377e98b48f7",
+    "extract_frames.py": "7b305d3b60d2b39639c6eaad910b95f8e123f6f63401879b24f87c49792f620e",
+    "inspect_media.py": "f32ddf7386df5ec8c53bf77655c2d000d8c56ed0bcf9a89ab40399903f2e1b8f",
+    "providers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "providers/dashscope_client.py": "3aec651047ee75471397e05b4547dcc676e2954f243b67e401f439cf66037365",
+    "providers/dashscope_image.py": "7edf6cb120cad5c76ee0c0667b6d46067ab22a6852dda20ec8342fad03d1c13c",
+    "providers/dashscope_omni.py": "7a94689d75d213cf08ee6029d9788e6a7bc0733fa74dbf6fdcda9404cad007cb",
+    "providers/dashscope_video.py": "f74e510467f84fbac29e8d580a3f525c1be1ebe212111a732a3c77706d18cb05",
+    "providers/dashscope_vlm.py": "0c1b728a9ab4f0ee1dc9059bbfaadb665024658c45ddeba238bebaf3791fbd35",
+    "validate_media.py": "ce8d94a32cb13bed058f0bcebb594daf4289d576e50f57a76eb2f5a60940ab33",
+    "vlm_understand.py": "0e1a0628d50a2cd385267da475ef8ea26861d58e9d62c6bcdb07ec72369e6997"
+  },
+  "runtime_skills_sha256": {
+    "image-gen/SKILL.md": "bcc13832dd01c234fc798b382e924cc8b139d3f0a4bdf78b774b8abdc52525e6",
+    "image-gen/scripts/generate.py": "20bde201317f7861a6c479b4cae463c714f7b702eb83959ddbd5b7e27df2089c",
+    "video-gen/SKILL.md": "9e883f24624202864205d46cd2eec34c0ff199a1efe395f2f805bae3609e8a8f",
+    "video-gen/scripts/generate.py": "ef70ceb3a1be639282b03ed23996bd267ca6bbe2cb6fcde9d3dfd6fcc34fc638"
+  },
+  "started_at": "2026-08-29T02:09:54.932105+00:00",
+  "finished_at": "2026-08-29T02:34:18.593855+00:00",
+  "agent_exit_code": 0,
+  "verifier_status": "pending",
+  "verifier_pass": false,
+  "verifier_reward": 0.0,
+  "providers": {
+    "agent_llm": {
+      "provider": "deepseek",
+      "model": "deepseek/deepseek-v4-flash"
+    },
+    "vlm": {
+      "provider": "dashscope",
+      "model": "qwen-vl-max"
+    },
+    "image_generation": {
+      "provider": "dashscope",
+      "model": "wan2.7-image-pro"
+    },
+    "video_generation": {
+      "provider": "dashscope",
+      "model": "wan3.0-video"
+    }
+  },
+  "skill_backend_adapted": true,
+  "skill_source": "VideoWeaver",
+  "edit_verifier_mode": "adapted"
+}

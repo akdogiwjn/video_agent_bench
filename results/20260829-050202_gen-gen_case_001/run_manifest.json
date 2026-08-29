@@ -1,0 +1,86 @@
+{
+  "benchmark": "VBench",
+  "case_id": "gen_case_001",
+  "case_source": "multi-benchmark-derived",
+  "official_benchmark_case": false,
+  "benchmark_commit": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490",
+  "benchmark_sources": {
+    "task_content": {
+      "benchmark": "VBench",
+      "commit": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    "agentic_basis": {
+      "benchmark": "VideoWeaver",
+      "commit": "c809392fe6c2c8b22472049684aaefc650e31bde"
+    }
+  },
+  "agent": "OpenClaw",
+  "agent_version": "OpenClaw 2026.7.1-2 (0790d9f)",
+  "agent_model": "deepseek/deepseek-v4-flash",
+  "docker_image": "video-agent-bench:1.0",
+  "docker_image_id": "sha256:3e1b33a27a522bdb3bc332b235584351724527f61e4b17474d178aaa464ab932",
+  "task_sha256": "c7e6c141487f77d92435bc9b1eee8d985000bb988dbc0c883e98fc818c17dd5e",
+  "instruction_sha256": "c7e6c141487f77d92435bc9b1eee8d985000bb988dbc0c883e98fc818c17dd5e",
+  "original_prompt_sha256": "140e2594cce0d2b8ba8368ea327d28b571dadeb4dbfda24dea611389a2720840",
+  "adaptation_sha256": "c297fae196a367933aa4fe05935d79a1e81894629aebf2f0cac250f7a0e47679",
+  "input_sha256": {},
+  "skills_sha256": {
+    "extract-video-frame/SKILL.md": "e44a7a1e18a0672a70c33a156655c62a819fd7dec3e99ca207bc8ba7d3396526",
+    "extract-video-frame/scripts/extract_frame.py": "4c3f5143da1800e30c7d98efef68f67537ee4f8900b824e10c8bf5741f7c97c9",
+    "get-output-dir/SKILL.md": "4bfe166658820acf9de0a6de3e070262d5d793a359e75bdb64db599ed70f77e5",
+    "get-output-dir/scripts/get_output_dir.py": "2c153ac9fb9d41266b7ca2a7b5b434f8506ef22b2d4771196af994798edf06e0",
+    "image-gen/SKILL.md": "bcc13832dd01c234fc798b382e924cc8b139d3f0a4bdf78b774b8abdc52525e6",
+    "image-gen/scripts/generate.py": "20bde201317f7861a6c479b4cae463c714f7b702eb83959ddbd5b7e27df2089c",
+    "merge-video/SKILL.md": "18c34d19ff616d1cb22524b94acad5ecc7f9519e267b498a85ca724c0d7960c2",
+    "merge-video/scripts/merge_videos.py": "35c21af56611aa8768dfc55a4f256b6cd4e56ee8b35a2a0a4bec0b53a4545054",
+    "video-gen/SKILL.md": "9e883f24624202864205d46cd2eec34c0ff199a1efe395f2f805bae3609e8a8f",
+    "video-gen/scripts/generate.py": "ef70ceb3a1be639282b03ed23996bd267ca6bbe2cb6fcde9d3dfd6fcc34fc638"
+  },
+  "verifier_sha256": "783984507a8b46803849e8737bbdbaec62a1ed00bef54d2a9a8be47fdf3a10fc",
+  "tools_sha256": {
+    "asr_transcribe.py": "25c14e92b203f221db0755f4e034be99c72b8fb3abe31a6aa9423377e98b48f7",
+    "extract_frames.py": "7b305d3b60d2b39639c6eaad910b95f8e123f6f63401879b24f87c49792f620e",
+    "inspect_media.py": "f32ddf7386df5ec8c53bf77655c2d000d8c56ed0bcf9a89ab40399903f2e1b8f",
+    "providers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "providers/dashscope_client.py": "3aec651047ee75471397e05b4547dcc676e2954f243b67e401f439cf66037365",
+    "providers/dashscope_image.py": "7edf6cb120cad5c76ee0c0667b6d46067ab22a6852dda20ec8342fad03d1c13c",
+    "providers/dashscope_omni.py": "7a94689d75d213cf08ee6029d9788e6a7bc0733fa74dbf6fdcda9404cad007cb",
+    "providers/dashscope_video.py": "f74e510467f84fbac29e8d580a3f525c1be1ebe212111a732a3c77706d18cb05",
+    "providers/dashscope_vlm.py": "0c1b728a9ab4f0ee1dc9059bbfaadb665024658c45ddeba238bebaf3791fbd35",
+    "validate_media.py": "ce8d94a32cb13bed058f0bcebb594daf4289d576e50f57a76eb2f5a60940ab33",
+    "vlm_understand.py": "0e1a0628d50a2cd385267da475ef8ea26861d58e9d62c6bcdb07ec72369e6997"
+  },
+  "runtime_skills_sha256": {
+    "image-gen/SKILL.md": "bcc13832dd01c234fc798b382e924cc8b139d3f0a4bdf78b774b8abdc52525e6",
+    "image-gen/scripts/generate.py": "20bde201317f7861a6c479b4cae463c714f7b702eb83959ddbd5b7e27df2089c",
+    "video-gen/SKILL.md": "9e883f24624202864205d46cd2eec34c0ff199a1efe395f2f805bae3609e8a8f",
+    "video-gen/scripts/generate.py": "ef70ceb3a1be639282b03ed23996bd267ca6bbe2cb6fcde9d3dfd6fcc34fc638"
+  },
+  "started_at": "2026-08-29T05:02:03.396358+00:00",
+  "finished_at": "2026-08-29T05:08:09.733457+00:00",
+  "agent_exit_code": 0,
+  "verifier_status": "fail",
+  "verifier_pass": false,
+  "verifier_reward": 0.875,
+  "providers": {
+    "agent_llm": {
+      "provider": "deepseek",
+      "model": "deepseek/deepseek-v4-flash"
+    },
+    "vlm": {
+      "provider": "dashscope",
+      "model": "qwen-vl-max"
+    },
+    "image_generation": {
+      "provider": "dashscope",
+      "model": "wan2.7-image-pro"
+    },
+    "video_generation": {
+      "provider": "dashscope",
+      "model": "wan3.0-video"
+    }
+  },
+  "skill_backend_adapted": true,
+  "skill_source": "VideoWeaver",
+  "edit_verifier_mode": "adapted"
+}

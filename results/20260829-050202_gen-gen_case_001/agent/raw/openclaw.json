@@ -1,0 +1,67 @@
+{
+  "skills": {
+    "load": {
+      "extraDirs": ["/workspace/skills"],
+      "watch": true,
+      "watchDebounceMs": 250
+    }
+  },
+  "env": {
+    "shellEnv": {
+      "enabled": false,
+      "timeoutMs": 15000
+    },
+    "vars": {},
+    "OUTPUT_DIR": "/workspace/output"
+  },
+  "tools": {
+    "profile": "coding",
+    "deny": ["browser","canvas","cron","sessions_spawn","sessions_yield","subagents","web_search","x_search","web_fetch","image_generate","music_generate","video_generate","tts","message","heartbeat_respond","nodes","computer","dashboard","terminal","portal","show_widget","skill_workshop","suggest_task","dismiss_task"]
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "deepseek": {
+        "baseUrl": "https://api.deepseek.com/v1",
+        "apiKey": "${DEEPSEEK_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "deepseek-v4-flash",
+            "name": "DeepSeek V4 Flash",
+            "reasoning": true,
+            "input": ["text"],
+            "contextWindow": 128000,
+            "maxTokens": 8192,
+            "compat": {
+              "supportsTools": true,
+              "supportsTemperature": true,
+              "requiresStringContent": true,
+              "requiresReasoningContentOnAssistantMessages": true
+            }
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "/workspace",
+      "timeoutSeconds": 1800,
+      "verboseDefault": "full",
+      "maxConcurrent": 100,
+      "model": {
+        "primary": "deepseek/deepseek-v4-flash"
+      },
+      "contextInjection": "continuation-skip",
+      "subagents": {
+        "maxConcurrent": 1
+      }
+    },
+    "list": [
+      {
+        "id": "main"
+      }
+    ]
+  }
+}

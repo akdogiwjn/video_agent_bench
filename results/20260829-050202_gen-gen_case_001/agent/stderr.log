@@ -1,0 +1,3 @@
+WARNING: trajectory export failed (exit=1)
+Session not found: bench-460d42a5. Run openclaw sessions to see available sessions.
+WARNING: export directory not found at /workspace/.openclaw/trajectory-exports/benchmark-trajectory

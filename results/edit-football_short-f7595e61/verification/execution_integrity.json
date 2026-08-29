@@ -1,0 +1,5 @@
+{
+  "pass": true,
+  "stdout": "=== Execution Integrity Verification ===\n  PASS: agent_exit_code = exit_code=0\n  PASS: raw_openclaw_state = present\n  PASS: trajectory_exists = trajectory.json\n  PASS: tool_calls_present = 90 calls\n  PASS: correct_final_artifact = repurpose.mp4\n  PASS: artifact_mtime_in_window = file_mtime=2026-08-29T02:33:42.080504+00:00, window=2026-08-29T02:09:54.932105+00:00 to 2026-08-29T02:34:18.593855+00:00\n  PASS: logs_captured = stdout=yes, stderr=yes\n\nOverall: PASS\n",
+  "stderr": ""
+}

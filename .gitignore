@@ -9,8 +9,22 @@ __pycache__/
 docker-context/
 
 # Results & evidence (generated at runtime)
-results/
+# Manifests and verification results are tracked; large media is excluded below
 evidence/manifests/
+
+# Large media files — do not commit
+cases/edit/materials/*.mp4
+cases/edit/football_short/materials/*.mp4
+cases/gen/*/references/*.mp4
+cases/gen/*/references/*.avi
+cases/gen/*/references/*.mov
+results/**/*.mp4
+results/**/*.avi
+results/**/*.mov
+results/**/*.mkv
+results/**/*.sqlite
+results/**/openclaw_state/
+results/**/workspace/
 
 # Config with secrets
 config/config.env

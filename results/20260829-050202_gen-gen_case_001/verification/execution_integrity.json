@@ -1,0 +1,5 @@
+{
+  "pass": false,
+  "stdout": "=== Execution Integrity Verification ===\n  PASS: agent_exit_code = exit_code=0\n  PASS: raw_openclaw_state = present\n  PASS: trajectory_exists = trajectory.json\n  FAIL: tool_calls_present = 0 calls \u2014 Video Agent workload must have at least 1 tool call\n  PASS: correct_final_artifact = final.mp4\n  PASS: artifact_mtime_in_window = file_mtime=2026-08-29T05:07:39.068142+00:00, window=2026-08-29T05:02:03.396358+00:00 to 2026-08-29T05:08:09.733457+00:00\n  PASS: logs_captured = stdout=yes, stderr=yes\n\nOverall: FAIL\n",
+  "stderr": ""
+}

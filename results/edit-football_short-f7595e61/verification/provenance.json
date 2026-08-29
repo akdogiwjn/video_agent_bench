@@ -1,0 +1,5 @@
+{
+  "pass": true,
+  "stdout": "=== Provenance Verification ===\n  PASS: benchmark_commit = 4bb09e0478be8008... (expected: one of ['VBench', 'VideoWeaver', 'AgenticVBench'])\n  PASS: case_id = football_short\n  PASS: task_sha256 = 55a46ce6bb05d758... (expected: not found)\n  PASS: original_prompt_sha256 = missing (expected: N/A (EDIT has no prompt))\n  PASS: adaptation_sha256 = N/A (expected: N/A (EDIT has no adaptation))\n  PASS: input_sha256 = 1 files\n  PASS: skills_sha256 = 0 files\n  PASS: verifier_sha256 = 8a9f08127b03ca63... (expected: 8a9f08127b03ca63...)\n  PASS: docker_image = video-agent-bench:1.0\n  PASS: docker_image_id = sha256:a3db8c90246333a34...\n  PASS: agent = OpenClaw\n  PASS: agent_version = OpenClaw 2026.7.1-2 (0790d9f)\n  PASS: agent_model = deepseek/deepseek-v4-flash\n  PASS: tools_sha256 = 11 files (11 matched, 0 mismatched) (expected: match against /home/lcq/video_agent_bench/tools/media + /home/lcq/video_agent_bench/tools/providers)\n\nOverall: PASS\n",
+  "stderr": ""
+}
