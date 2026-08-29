@@ -422,33 +422,49 @@ def run_checks(results_dir: Path, rubric: dict, case_dir: Path) -> dict:
         # C-02: multiple distinct shots (scene detection)
         elif item_id == "C-02":
             if final_mp4.is_file():
+                # Try scenedetect CLI first
+                scene_count = 0
                 try:
                     result = subprocess.run(
                         ["scenedetect", "-i", str(final_mp4), "detect-content", "list-scenes"],
                         capture_output=True, text=True, timeout=60,
                     )
-                    scene_count = result.stdout.count("Scene") // 2
+                    # Parse stdout for "Detected N scenes"
+                    for line in result.stdout.split("\n"):
+                        if "Detected" in line and "scene" in line.lower():
+                            parts = line.split()
+                            for p in parts:
+                                if p.isdigit():
+                                    scene_count = int(p)
+                                    break
+                    if scene_count == 0:
+                        # Fallback: count "Scene" mentions divided by 2 (old parsing)
+                        scene_count = result.stdout.count("Detected") // 2
                     passed = scene_count >= 2
-                    detail = f"detected_scenes={scene_count}"
-                except Exception:
-                    # Fallback: frame analysis
+                    detail = f"scenedetect: scenes={scene_count}"
+                except (FileNotFoundError, Exception) as e:
+                    # Fallback: frame difference analysis
                     frames = extract_frames(final_mp4, num_frames=15)
-                    if len(frames) >= 2:
+                    if len(frames) >= 3:
                         try:
                             import numpy as np
                             from PIL import Image
-                            pixel_data = [np.array(Image.open(fp).convert("RGB")) for fp in frames]
-                            diffs = [float(np.abs(pixel_data[i].astype(float) - pixel_data[0].astype(float)).mean())
-                                     for i in range(1, len(pixel_data))]
-                            avg_diff = sum(diffs) / len(diffs) if diffs else 0
-                            passed = avg_diff > 5.0
-                            detail = f"fallback: avg_frame_diff={avg_diff:.2f}"
+                            pixel_data = [np.array(Image.open(fp).convert("RGB")).astype(float) for fp in frames]
+                            # Count significant frame-to-frame changes
+                            significant_changes = 0
+                            for i in range(1, len(pixel_data)):
+                                diff = float(np.abs(pixel_data[i] - pixel_data[i-1]).mean())
+                                if diff > 10.0:
+                                    significant_changes += 1
+                            passed = significant_changes >= 1  # At least one significant change
+                            detail = f"frame_analysis: {significant_changes} significant changes (threshold >10.0)"
                         except Exception:
                             passed = False
                             detail = "fallback analysis failed"
                     else:
                         passed = False
                         detail = "not enough frames for analysis"
+                    cleanup_frames(frames)
             else:
                 passed = False
                 detail = "final.mp4 not found"
