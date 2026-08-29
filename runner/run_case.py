@@ -259,40 +259,88 @@ def run_verifier_pipeline(case_type: str, results_dir: Path, case_dir: Path, ima
 
 
 def run_benchmark_verifier(case_type: str, results_dir: Path, case_dir: Path, image: str) -> dict:
-    """Run the benchmark-specific verifier (V2)."""
+    """Run the benchmark-specific verifier (V2) inside a Docker container.
+
+    This ensures the verifier has:
+    - Network access via proxy (for VLM/Omni API calls)
+    - Whisper pre-cached (for F-09/S-01 transcript comparison)
+    - scenedetect installed (for GEN C-02)
+    - All Python dependencies (numpy, PIL, openai, etc.)
+    """
     verifier_script = ROOT / "verifier" / case_type / "evaluate.py"
     if not verifier_script.is_file():
         return {"status": "no_verifier", "reason": f"No verifier at {verifier_script}"}
 
-    cmd = [sys.executable, str(verifier_script), "--results", str(results_dir)]
+    # Mount results dir + case dir + repo root into container
+    host_results = str(results_dir.resolve())
+    host_case_dir = str(case_dir.resolve())
+    host_root = str(ROOT.resolve())
 
+    # Build docker run command — verifier runs inside container
+    cmd = [
+        "docker", "run", "--rm",
+        "--entrypoint", "/bin/bash",
+        "--name", f"vab-verifier-{case_type}-{uuid.uuid4().hex[:8]}",
+        "-v", f"{host_results}:/results:rw",
+        "-v", f"{host_case_dir}:/case:ro",
+        "-v", f"{host_root}:/repo:ro",
+        "-w", "/repo",
+        "-e", f"DEEPSEEK_API_KEY={os.environ.get('DEEPSEEK_API_KEY', '')}",
+        "-e", f"DASHSCOPE_API_KEY={os.environ.get('DASHSCOPE_API_KEY', '')}",
+        "-e", f"DASHSCOPE_BASE_URL={os.environ.get('DASHSCOPE_BASE_URL', '')}",
+        "-e", f"DASHSCOPE_NATIVE_BASE_URL={os.environ.get('DASHSCOPE_NATIVE_BASE_URL', '')}",
+        "-e", f"VLM_MODEL={os.environ.get('VLM_MODEL', '')}",
+        "-e", f"VLM_BASE_URL={os.environ.get('VLM_BASE_URL', '')}",
+        "-e", f"OMNI_MODEL={os.environ.get('OMNI_MODEL', '')}",
+        "-e", f"IMAGE_GEN_MODEL={os.environ.get('IMAGE_GEN_MODEL', '')}",
+        "-e", f"VIDEO_GEN_MODEL={os.environ.get('VIDEO_GEN_MODEL', '')}",
+        "-e", f"EDIT_VERIFIER_MODE={os.environ.get('EDIT_VERIFIER_MODE', 'adapted')}",
+        "-e", "GEMINI_API_KEY=" + os.environ.get("GEMINI_API_KEY", ""),
+        "-e", "ANTHROPIC_API_KEY=" + os.environ.get("ANTHROPIC_API_KEY", ""),
+    ]
+
+    # Add proxy env if available
+    for proxy_var in ["http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY"]:
+        val = os.environ.get(proxy_var)
+        if val:
+            cmd.extend(["-e", f"{proxy_var}={val}"])
+
+    # Add Python path so verifier can import tools/providers
+    cmd.extend([
+        "-e", "PYTHONPATH=/repo",
+        image,
+        "-c",
+    ])
+
+    # Build the Python command
     if case_type == "gen":
-        cmd.extend(["--case-dir", str(case_dir)])
-    elif case_type == "edit":
+        py_cmd = f"python3 /repo/verifier/gen/evaluate.py --results /results --case-dir /case"
+    else:
+        # EDIT: task_id from manifest
         manifest_path = case_dir / "case_manifest.json"
+        task_id = "football"
         if manifest_path.is_file():
             with open(manifest_path) as f:
                 m = json.load(f)
             task_id = m.get("case_id", "football")
-            cmd.extend(["--task-id", task_id, "--image", image, "--case-dir", str(case_dir)])
+        py_cmd = f"python3 /repo/verifier/edit/evaluate.py --results /results --task-id {task_id} --case-dir /case --image {image}"
+
+    cmd.append(py_cmd)
 
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=1800, cwd=str(ROOT),
+            cmd, capture_output=True, text=True, timeout=1800,
         )
+        # Read benchmark_result.json written by verifier
+        benchmark_path = results_dir / "verification" / "benchmark_result.json"
+        if benchmark_path.is_file():
+            with open(benchmark_path) as f:
+                return json.load(f)
+        # Fallback: read verification_result.json
         vresult_path = results_dir / "verification" / "verification_result.json"
-        # V2 writes its own result; but since we're aggregating, we need to
-        # re-read what the verifier wrote (it may have been overwritten by our pipeline)
-        # Actually the V2 verifier writes to verification/verification_result.json
-        # and our pipeline also writes there. So we capture V2's result differently.
-        # The V2 verifier already wrote verification_result.json — read it before we overwrite.
         if vresult_path.is_file():
             with open(vresult_path) as f:
-                v2_data = json.load(f)
-            # V2 already wrote the file; rename it to benchmark_result.json
-            # Actually we already wrote benchmark_result.json above.
-            # Let's just return the V2 data.
-            return v2_data
+                return json.load(f)
         return {
             "status": "verifier_error",
             "exit_code": result.returncode,

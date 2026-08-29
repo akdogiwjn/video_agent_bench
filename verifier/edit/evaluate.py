@@ -347,7 +347,7 @@ def _evaluate_adapted(results_dir: Path, task_id: str, upstream_root: Path | Non
 
     # Run deterministic checks (same as official verifier pillar 0)
     agent_output = results_dir / "output" / "repurpose.mp4"
-    det_results = _run_deterministic_edit_checks(agent_output, rubric)
+    det_results = _run_deterministic_edit_checks(agent_output, rubric, case_dir)
     result["details"]["deterministic_checks"] = det_results
 
     # Run LLM-judge items using Qwen-VL (visual) and Qwen-Omni (audio)
@@ -373,7 +373,7 @@ def _evaluate_adapted(results_dir: Path, task_id: str, upstream_root: Path | Non
     return result
 
 
-def _run_deterministic_edit_checks(video_path: Path, rubric: dict) -> dict:
+def _run_deterministic_edit_checks(video_path: Path, rubric: dict, case_dir: Path | None = None) -> dict:
     """Run deterministic format checks from the official rubric.
 
     Routes by item["judge"] == "deterministic" (not by pillar).
@@ -469,8 +469,30 @@ def _run_deterministic_edit_checks(video_path: Path, rubric: dict) -> dict:
                 detail = f"silence detection error: {e}"
         # Novel voice-over / Whisper transcript / gemini-audio deterministic items
         elif "novel" in check_lower or "voice" in check_lower or "whisper" in check_lower or "gemini-audio" in check_lower:
-            passed = False
-            detail = "requires Whisper transcript + source comparison - not implemented in adapted mode"
+            # These require Whisper transcript comparison between reel and source
+            # Run Whisper on the reel audio, then compare with source transcript
+            try:
+                reel_text, source_text = _get_whisper_transcripts(video_path, case_dir)
+                if reel_text and source_text:
+                    # F-09: every spoken word in reel is present in source transcript
+                    # S-01: at least one >=4 word phrase from reel is in source
+                    reel_phrases = [p.strip().lower() for p in reel_text.split('.') if len(p.split()) >= 4]
+                    source_lower = source_text.lower()
+                    matched = sum(1 for p in reel_phrases if p in source_lower)
+                    if "novel" in check_lower:
+                        # F-09: all reel phrases must be in source (no novel VO)
+                        passed = matched == len(reel_phrases) if reel_phrases else True
+                        detail = f"reel_phrases={len(reel_phrases)}, matched_in_source={matched}"
+                    else:
+                        # S-01: at least one phrase must be in source
+                        passed = matched >= 1 if reel_phrases else False
+                        detail = f"reel_phrases={len(reel_phrases)}, matched_in_source={matched}"
+                else:
+                    passed = False
+                    detail = "Whisper transcription failed (empty result)"
+            except Exception as e:
+                passed = False
+                detail = f"Whisper comparison error: {e}"
         else:
             passed = False
             detail = f"unrecognized deterministic check: {check[:60]}"
@@ -599,6 +621,93 @@ def _run_adapted_judge(video_path: Path, rubric: dict, vlm_model: str, omni_mode
     shutil.rmtree(tmpdir, ignore_errors=True)
 
     return results
+
+
+# --- Whisper transcript helpers ---
+
+_whisper_cache = {}
+
+
+def _whisper_transcribe(video_path: str, model_name: str = "base") -> str:
+    """Run Whisper on a video's audio track, return full transcript text."""
+    import subprocess as _sp
+    import tempfile
+
+    if video_path in _whisper_cache:
+        return _whisper_cache[video_path]
+
+    # Extract audio first (mono 16kHz for Whisper)
+    tmp_audio = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
+    _sp.run(
+        ["ffmpeg", "-y", "-i", video_path, "-ac", "1", "-ar", "16000", tmp_audio],
+        capture_output=True, timeout=120,
+    )
+
+    try:
+        import whisper
+        model = whisper.load_model(model_name, device="cpu")
+        result = model.transcribe(tmp_audio)
+        text = result.get("text", "").strip()
+    except ImportError:
+        text = ""
+    except Exception as e:
+        text = ""
+    finally:
+        if os.path.exists(tmp_audio):
+            os.unlink(tmp_audio)
+
+    _whisper_cache[video_path] = text
+    return text
+
+
+def _get_whisper_transcripts(reel_path: Path, case_dir: Path | None) -> tuple[str, str]:
+    """Get Whisper transcripts for both the reel and the source video.
+
+    For F-09/S-01, the source transcript is from the first 3:42 (222s)
+    of the source video (matching official rubric).
+    """
+    import subprocess as _sp
+    import tempfile
+
+    # Transcribe the reel
+    reel_text = _whisper_transcribe(str(reel_path))
+
+    # Get source video path
+    if case_dir is None:
+        return reel_text, ""
+
+    source_path = case_dir / "materials" / "source.mp4"
+    if not source_path.is_file():
+        return reel_text, ""
+
+    # For F-09, official rubric compares against first 3:42 of source
+    # Extract first 222s of source audio
+    cache_key = f"source_222_{source_path}"
+    if cache_key in _whisper_cache:
+        return reel_text, _whisper_cache[cache_key]
+
+    tmp_audio = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
+    _sp.run(
+        ["ffmpeg", "-y", "-i", str(source_path), "-t", "222",
+         "-ac", "1", "-ar", "16000", tmp_audio],
+        capture_output=True, timeout=120,
+    )
+
+    try:
+        import whisper
+        model = whisper.load_model("base", device="cpu")
+        result = model.transcribe(tmp_audio)
+        source_text = result.get("text", "").strip()
+    except ImportError:
+        source_text = ""
+    except Exception:
+        source_text = ""
+    finally:
+        if os.path.exists(tmp_audio):
+            os.unlink(tmp_audio)
+
+    _whisper_cache[cache_key] = source_text
+    return reel_text, source_text
 
 
 def main():
