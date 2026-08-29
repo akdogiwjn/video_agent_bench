@@ -283,9 +283,12 @@ def run_benchmark_verifier(case_type: str, results_dir: Path, case_dir: Path, im
     host_root = str(ROOT.resolve())
 
     # Build docker run command — verifier runs inside container
+    host_uid = os.getuid()
+    host_gid = os.getgid()
     cmd = [
         "docker", "run", "--rm",
         "--network", "host",
+        "--user", f"{host_uid}:{host_gid}",
         "--entrypoint", "/bin/bash",
         "--name", f"vab-verifier-{case_type}-{uuid.uuid4().hex[:8]}",
         "-v", f"{host_results}:/results:rw",

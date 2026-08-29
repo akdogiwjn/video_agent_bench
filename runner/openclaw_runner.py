@@ -101,10 +101,15 @@ def run_openclaw_in_docker(
     # Build docker run command
     # --rm ensures container is removed after exit (no leftover API keys)
     # UUID in name avoids collision on concurrent runs
+    # --user ensures files created in mounted volumes are owned by host user
     import uuid as _uuid
+    import os as _os
+    host_uid = _os.getuid()
+    host_gid = _os.getgid()
     container_name = f"video-agent-bench-{_uuid.uuid4().hex[:8]}"
     cmd = [
         "docker", "run", "--rm",
+        "--user", f"{host_uid}:{host_gid}",
         "--name", container_name,
     ]
     for k, v in env.items():
