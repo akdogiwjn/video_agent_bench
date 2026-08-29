@@ -386,7 +386,9 @@ def run_case(args):
         print("  All files verified.")
 
     # 2. Create workspace + openclaw state dir
-    run_id = f"{case_type}-{manifest.get('case_id', 'unknown')}-{uuid.uuid4().hex[:8]}"
+    from datetime import datetime
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    run_id = f"{ts}_{case_type}-{manifest.get('case_id', 'unknown')}"
     results_dir = ROOT / "results" / run_id
     workspace = results_dir / "workspace"
     openclaw_state_dir = results_dir / "openclaw_state"
