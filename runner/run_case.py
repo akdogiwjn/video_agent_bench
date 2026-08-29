@@ -391,7 +391,7 @@ def run_case(args):
     # 2. Create workspace + openclaw state dir
     from datetime import datetime
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-    run_id = f"{ts}_{case_type}-{manifest.get('case_id', 'unknown')}"
+    run_id = f"{ts}-{uuid.uuid4().hex[:6]}_{case_type}-{manifest.get('case_id', 'unknown')}"
     results_dir = ROOT / "results" / run_id
     workspace = results_dir / "workspace"
     openclaw_state_dir = results_dir / "openclaw_state"
