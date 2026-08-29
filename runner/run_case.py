@@ -230,10 +230,16 @@ def run_verifier_pipeline(case_type: str, results_dir: Path, case_dir: Path, ima
     # V2: Benchmark verifier
     print("  [V2] Benchmark verifier...")
     v2_result = run_benchmark_verifier(case_type, results_dir, case_dir, image)
+    # V2 writes benchmark_result.json from inside Docker (root-owned)
+    # Try to read it; if write fails due to permissions, just use the returned data
     v2_result_path = verif_dir / "benchmark_result.json"
-    with open(v2_result_path, "w") as f:
-        json.dump(v2_result, f, indent=2, ensure_ascii=False)
-        f.write("\n")
+    try:
+        with open(v2_result_path, "w") as f:
+            json.dump(v2_result, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+    except PermissionError:
+        # Docker root wrote it; use the data we got back from subprocess
+        pass
     pipeline_result["details"]["v2_benchmark"] = {
         "pass": v2_result.get("pass", False),
         "status": v2_result.get("status", "unknown"),
@@ -279,6 +285,7 @@ def run_benchmark_verifier(case_type: str, results_dir: Path, case_dir: Path, im
     # Build docker run command — verifier runs inside container
     cmd = [
         "docker", "run", "--rm",
+        "--network", "host",
         "--entrypoint", "/bin/bash",
         "--name", f"vab-verifier-{case_type}-{uuid.uuid4().hex[:8]}",
         "-v", f"{host_results}:/results:rw",
