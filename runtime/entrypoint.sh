@@ -27,7 +27,8 @@ fi
 TASK_MESSAGE="$(cat "$TASK_FILE")"
 
 # --- Configure OpenClaw before launch ---
-OPENCLAW_HOME="/root/.openclaw"
+# Use /tmp/openclaw_home instead of /root/.openclaw so non-root --user works
+OPENCLAW_HOME="/tmp/openclaw_home"
 mkdir -p "$OPENCLAW_HOME"
 
 # --- Build tool policy based on case type ---
@@ -122,6 +123,8 @@ EAJSON
 
 export OUTPUT_DIR="/workspace/output"
 export OPENCLAW_WORKSPACE_DIR="/workspace"
+export OPENCLAW_HOME="$OPENCLAW_HOME"
+export OPENCLAW_STATE_DIR="$OPENCLAW_HOME"
 export DEEPSEEK_API_KEY="${DEEPSEEK_API_KEY:-}"
 export DEEPSEEK_BASE_URL="${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}"
 
@@ -177,7 +180,7 @@ if [ -d "$EXPORT_DIR" ]; then
     echo "  Trajectory bundle copied to /workspace/logs/trajectory_bundle/"
 else
     echo "WARNING: export directory not found at $EXPORT_DIR" >&2
-    # Fallback: check /root/.openclaw/ for older OpenClaw versions
+    # Fallback: check /tmp/openclaw_home/ for older OpenClaw versions
     FALLBACK_DIR="$OPENCLAW_HOME/trajectory-exports/benchmark-trajectory"
     if [ -d "$FALLBACK_DIR" ]; then
         mkdir -p /workspace/logs/trajectory_bundle

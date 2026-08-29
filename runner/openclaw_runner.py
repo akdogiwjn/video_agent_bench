@@ -82,7 +82,7 @@ def run_openclaw_in_docker(
         openclaw_state_dir = workspace.parent / "openclaw_state"
     openclaw_state_dir = Path(openclaw_state_dir).resolve()
     openclaw_state_dir.mkdir(parents=True, exist_ok=True)
-    volumes[str(openclaw_state_dir)] = {"bind": "/root/.openclaw", "mode": "rw"}
+    volumes[str(openclaw_state_dir)] = {"bind": "/tmp/openclaw_home", "mode": "rw"}
 
     # Environment variables
     import uuid as _uuid
