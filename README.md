@@ -82,12 +82,24 @@ evaluation basis only.
 
 ## EDIT workload
 
-EDIT cases are **official** AgenticVBench Repurpose tasks:
+EDIT uses AgenticVBench Repurpose official task, with controlled adaptation:
 
-- **Task content**: official instruction.md (unmodified)
-- **Source materials**: official source.mp4 from HuggingFace
-- **Verifier**: official judge.py + rubric.json + aggregate.py
-- **case_source**: official
+- **Official task**: AgenticVBench football instruction.md (unmodified)
+- **Official rubric**: football rubric.json + judge.py (frozen in upstream/)
+- **Adapted source material**: football_short — 14min compact extract of the
+  official 3h20min source.mp4, preserving all rubric-referenced segments
+- **case_source**: adapted (football_short) / official (football)
+- **upstream_task_id**: football (rubric source)
+- **Verifier**: adapted mode uses Qwen-VL (visual judge) + Qwen-Omni (audio
+  judge) + Whisper (transcript comparison). Official mode (Gemini + Anthropic)
+  remains available via `EDIT_VERIFIER_MODE=official`.
+
+Two EDIT case variants:
+
+| Case | Source | Duration | case_source | Purpose |
+|------|--------|----------|-------------|---------|
+| `football` | official 2.47GB | 12011s | official | Final benchmark verification |
+| `football_short` | adapted 307MB extract | 842s | adapted | Development, perf testing |
 
 ## Milestones
 

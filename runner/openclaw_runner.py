@@ -202,11 +202,8 @@ def collect_trajectory(workspace: Path, results_dir: Path, openclaw_state_dir: P
         collected["raw_openclaw_state"] = str(raw_dir)
 
         # Look for trajectory export files written by entrypoint.sh to workspace
-        # (not in /root/.openclaw — entrypoint.sh exports to /workspace/.openclaw/)
-        # This section is a fallback for older OpenClaw versions that wrote to ~/.openclaw/
         exports_dir = raw_dir / "trajectory-exports"
         if exports_dir.is_dir():
-            # Look specifically for events.jsonl (the canonical event stream)
             events_file = exports_dir / "benchmark-trajectory" / "events.jsonl"
             if events_file.is_file() and collected["tool_events_jsonl"] is None:
                 dst = agent_dir / "events.jsonl"
@@ -215,11 +212,28 @@ def collect_trajectory(workspace: Path, results_dir: Path, openclaw_state_dir: P
                 if collected["trajectory_json"] is None:
                     collected["trajectory_json"] = str(dst)
 
-        # Fallback: look for legacy session JSONL files
-        if collected["trajectory_json"] is None:
-            for f in raw_dir.rglob("*.jsonl"):
-                if "session" in str(f).lower() or "trajectory" in str(f).lower():
-                    dst = agent_dir / "trajectory.json"
+        # If trajectory export was incomplete (only high-level events),
+        # use the full session JSONL which contains all message-level tool calls
+        # Session JSONL files are in agents/main/sessions/*.jsonl (excluding *.trajectory.jsonl)
+        session_jsonl_found = False
+        for f in sorted(raw_dir.rglob("*.jsonl")):
+            fname = f.name
+            if "trajectory" in fname:
+                # This is the export — already handled above
+                continue
+            # This is the full session JSONL with all events including tool calls
+            dst = agent_dir / "trajectory.json"
+            if not dst.exists():
+                shutil.copy2(f, dst)
+                collected["trajectory_json"] = str(dst)
+                session_jsonl_found = True
+                break
+
+        # If no session JSONL found, try trajectory.jsonl as fallback
+        if not session_jsonl_found and collected["trajectory_json"] is None:
+            for f in raw_dir.rglob("*.trajectory.jsonl"):
+                dst = agent_dir / "trajectory.json"
+                if not dst.exists():
                     shutil.copy2(f, dst)
                     collected["trajectory_json"] = str(dst)
                     break

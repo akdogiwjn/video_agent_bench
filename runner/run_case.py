@@ -584,6 +584,18 @@ def run_case(args):
             verifier_hasher.update(vf.read_bytes()); verifier_hasher.update(b"\0")
     verifier_sha = verifier_hasher.hexdigest()
 
+    # Get project git commit
+    project_commit = "unknown"
+    try:
+        git_result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True, text=True, timeout=5, cwd=str(ROOT),
+        )
+        if git_result.returncode == 0:
+            project_commit = git_result.stdout.strip()
+    except Exception:
+        pass
+
     # --- Write PRELIMINARY run_manifest.json BEFORE V0/V1/V2 ---
     print(f"\n[11a/12] Writing preliminary run_manifest.json (before V0/V1)...")
     run_manifest = {
@@ -591,6 +603,7 @@ def run_case(args):
         "case_source": manifest.get("case_source", "unknown"),
         "official_benchmark_case": manifest.get("official_benchmark_case", False),
         "benchmark_commit": upstream_commit, "benchmark_sources": benchmark_sources,
+        "project_git_commit": project_commit,
         "agent": "OpenClaw", "agent_version": agent_version, "agent_model": args.model,
         "docker_image": image, "docker_image_id": image_id,
         "task_sha256": task_sha, "instruction_sha256": task_sha,
