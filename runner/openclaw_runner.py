@@ -266,13 +266,16 @@ def collect_trajectory(workspace: Path, results_dir: Path, openclaw_state_dir: P
                 shutil.copytree(bundle_dir, bundle_dst, dirs_exist_ok=True)
 
             # events.jsonl is the canonical event stream
+            # BUT: do NOT overwrite trajectory_json if we already have the
+            # full session JSONL (which contains more tool call detail)
             events_file = bundle_dir / "events.jsonl"
             if events_file.is_file():
                 dst = agent_dir / "events.jsonl"
                 shutil.copy2(events_file, dst)
                 collected["tool_events_jsonl"] = str(dst)
-                # Also use events.jsonl as the primary trajectory source
-                collected["trajectory_json"] = str(dst)
+                # Only use events.jsonl as primary if no session JSONL found
+                if collected["trajectory_json"] is None:
+                    collected["trajectory_json"] = str(dst)
 
         # Copy individual log files
         for f in logs_dir.iterdir():

@@ -56,18 +56,19 @@ def verify_provenance(results_dir: Path) -> dict:
     case_source = run_manifest.get("case_source", "")
     benchmark = run_manifest.get("benchmark", "")
 
-    # --- Locate the case directory ---
+    # --- Locate the case directory by searching both edit/ and gen/ ---
     case_dir = None
-    if case_source == "official":
-        # EDIT: cases/edit/
-        candidate = ROOT / "cases" / "edit"
+    for sub in ["edit", "gen"]:
+        candidate = ROOT / "cases" / sub / case_id
         if (candidate / "case_manifest.json").is_file():
             case_dir = candidate
-    else:
-        # GEN: cases/gen/<case_id>/
-        candidate = ROOT / "cases" / "gen" / case_id
-        if (candidate / "case_manifest.json").is_file():
-            case_dir = candidate
+            break
+    if case_dir is None:
+        for sub in ["edit", "gen"]:
+            candidate = ROOT / "cases" / sub
+            if (candidate / "case_manifest.json").is_file():
+                case_dir = candidate
+                break
 
     case_manifest = load_json(case_dir / "case_manifest.json") if case_dir else None
     bs_manifest = load_json(case_dir / "benchmark_source.json") if case_dir else None
@@ -265,11 +266,11 @@ def verify_provenance(results_dir: Path) -> dict:
         rubric = case_dir / "rubric" / "rubric_deterministic.json"
         if rubric.is_file():
             verifier_files_to_hash.append(rubric)
-    # EDIT upstream verifier bundle
+    # EDIT upstream verifier bundle — use upstream_task_id for rubric lookup
     if case_source != "multi-benchmark-derived" and case_manifest:
-        task_id = case_manifest.get("case_id", "football")
+        upstream_task_id = case_manifest.get("upstream_task_id", case_manifest.get("case_id", "football"))
         for fname in ["rubric.json", "judge.py", "aggregate.py", "test.sh", "config.yaml"]:
-            vf2 = ROOT / "upstream" / "agentic_vbench" / "tasks_repurpose" / task_id / "steps" / "solve" / "tests" / fname
+            vf2 = ROOT / "upstream" / "agentic_vbench" / "tasks_repurpose" / upstream_task_id / "steps" / "solve" / "tests" / fname
             if vf2.is_file():
                 verifier_files_to_hash.append(vf2)
 

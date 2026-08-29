@@ -356,20 +356,39 @@ def _evaluate_adapted(results_dir: Path, task_id: str, upstream_root: Path | Non
     llm_results = _run_adapted_judge(agent_output, rubric, vlm_model, omni_model)
     result["details"]["adapted_judge"] = llm_results
 
-    # Compute reward using official weight semantics
-    # Positive items contribute weight; failed negative-weight items deduct
-    total_weight = 0
-    passed_weight = 0
+    # Compute reward using official AgenticVBench weight semantics
+    # - Positive weight: adds to score if pass, adds to ceiling always
+    # - Negative weight (violation): subtracts from score if pass (violation detected)
+    #   No effect on ceiling
+    # - narrative_essential with negative weight: subtracts if NOT passed
+    # reward = max(0, min(1, raw_score / ceiling))
+    raw_score = 0
+    ceiling = 0
     all_items = det_results["items"] + llm_results["items"]
     for item in all_items:
         w = item.get("weight", 1)
-        total_weight += abs(w)
-        if item["status"] == "pass":
-            passed_weight += abs(w)
+        passed = item["status"] == "pass"
 
-    result["reward"] = passed_weight / total_weight if total_weight > 0 else 0.0
+        if w > 0:
+            ceiling += w
+            if passed:
+                raw_score += w
+        elif item.get("narrative_essential"):
+            if not passed:
+                raw_score += w
+        else:
+            if passed:
+                raw_score += w
+
+    result["reward"] = max(0.0, min(1.0, raw_score / ceiling)) if ceiling > 0 else 0.0
     result["pass"] = result["reward"] > 0.5
     result["status"] = "evaluated"
+    result["details"]["scoring"] = {
+        "raw_score": raw_score,
+        "ceiling": ceiling,
+        "reward": result["reward"],
+        "method": "official_agenticvbench_semantics",
+    }
     return result
 
 

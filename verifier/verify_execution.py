@@ -77,7 +77,7 @@ def verify_execution(results_dir: Path, case_type: str | None = None) -> dict:
     }
 
     # 4. Tool calls in trajectory (>0 required for video Agent workloads)
-    # Accept both normalized (tool_call) and raw OpenClaw (tool.call) types
+    # Check ALL trajectory sources and take the max count (most complete source wins)
     tool_call_count = 0
     for traj_file in [normalized_path, events_path, trajectory_path]:
         if not traj_file.is_file():
@@ -91,7 +91,7 @@ def verify_execution(results_dir: Path, case_type: str | None = None) -> dict:
                     f.seek(0)
                     trajectory = [json.loads(line) for line in f if line.strip()]
             if isinstance(trajectory, list):
-                tool_call_count = sum(
+                count = sum(
                     1 for e in trajectory
                     if isinstance(e, dict) and (
                         e.get("type") in ("tool_call", "tool.call", "toolCall")
@@ -102,7 +102,7 @@ def verify_execution(results_dir: Path, case_type: str | None = None) -> dict:
                         )
                     )
                 )
-            break
+                tool_call_count = max(tool_call_count, count)
         except Exception:
             pass
     checks["tool_calls_present"] = {
